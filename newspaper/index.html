@@ -99,6 +99,20 @@
   }
   .tag em { font-style: normal; font-weight: 800; }
   .tag.plain { background: var(--chip); color: var(--text); font-weight: 500; }
+  /* 신문별 색: 진한 바탕 + 흰 글씨 (밖에서도 잘 보이게) */
+  .tag[class*=" p"] { color: #fff; }
+  .p0 { background: #1d4ed8; }   /* 조선일보 - 파랑 */
+  .p1 { background: #ea580c; }   /* 중앙일보 - 주황 */
+  .p2 { background: #15803d; }   /* 동아일보 - 초록 */
+  .p3 { background: #7c3aed; }   /* 매일경제 - 보라 */
+  .p4 { background: #0e7490; }   /* 한국경제 - 청록 */
+  .p5 { background: #db2777; }   /* 한겨레 - 분홍 */
+  .p6 { background: #a16207; }   /* 경향신문 - 황토 */
+  .p7 { background: #dc2626; }   /* 어린이조선 - 빨강 */
+  .p8 { background: #475569; }   /* 한국일보 - 회색 */
+  .p9 { background: #65a30d; }   /* 어린이동아 - 연두 */
+  .p10 { background: #4338ca; }  /* 서울경제 - 남색 */
+  .p11 { background: #9f1239; }  /* 소년한국 - 자주 */
   .empty-note { color: var(--muted); font-size: 14px; }
 
 
@@ -233,7 +247,8 @@
   'use strict';
 
   // ---------- 상수 ----------
-  const BUILDINGS = Array.from({ length: 15 }, (_, i) => String(401 + i)); // 401 ~ 415
+  // 배달하는 동 (408·409동은 배달 없음)
+  const BUILDINGS = ['401', '402', '403', '404', '405', '406', '407', '410', '411', '412', '413', '414', '415'];
   const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];            // 월 ~ 일 (Date.getDay 값)
   const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
   // 동별 입구 구성: 입구마다 들어가는 호(라인) 목록
@@ -243,7 +258,7 @@
   const L1x4 = [[1, 2, 3, 4]];           // 입구 1개 (1~4호)
   const LAYOUT = {
     401: L3, 402: L3, 403: L3, 404: L2, 405: L1x4,
-    406: L2, 407: L1x4, 408: L1, 409: L1, 410: L2,
+    406: L2, 407: L1x4, 410: L2,
     411: L2, 412: L1, 413: L1, 414: L1, 415: L1x4,
   };
   const layoutOf = b => LAYOUT[b] || L3;
@@ -263,14 +278,22 @@
     ['401', [3, 2, 1]], ['406', [1]], ['410', [1, 2]], ['411', [1, 2]], ['404', [1, 2]],
     ['412', [1]], ['413', [1]], ['414', [1]], ['415', [1]],
   ];
-  // 동선에 빠진 입구는 맨 뒤에 붙임
-  const ROUTE_GROUPS = (() => {
-    const seen = new Set(ROUTE.flatMap(([b, ns]) => ns.map(n => b + '-' + n)));
-    const extra = BUILDINGS.map(b => [b, entrancesOf(b).map(e => e.no).filter(n => !seen.has(b + '-' + n))])
-      .filter(([, ns]) => ns.length);
-    return [...ROUTE.map(g => [...g, false]), ...extra.map(g => [...g, true])];
-  })();
-  const STOPS = ROUTE_GROUPS.flatMap(([b, ns, extra]) => ns.map(no => ({ b, no, extra })));
+  const STOPS = ROUTE.flatMap(([b, ns]) => ns.map(no => ({ b, no })));
+
+  // 신문별 색 (색 번호는 아래 CSS의 .p0 ~ .p11). 목록에 없는 신문은 이름으로 자동 배정
+  const PAPER_COLORS = {
+    '조선일보': 0, '중앙일보': 1, '동아일보': 2, '매일경제': 3, '한국경제': 4, '한겨레': 5,
+    '경향신문': 6, '어린이조선': 7, '한국일보': 8, '어린이동아': 9, '서울경제': 10, '소년한국': 11,
+  };
+  const PALETTE_SIZE = 12;
+  function paperColor(name) {
+    if (name in PAPER_COLORS) return 'p' + PAPER_COLORS[name];
+    let h = 0;
+    for (const c of name) h = (h * 31 + c.codePointAt(0)) >>> 0;
+    return 'p' + (h % PALETTE_SIZE);
+  }
+  const paperTag = (name, count) =>
+    `<span class="tag ${paperColor(name)}">${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
     '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -355,7 +378,7 @@
   function totalsHtml(list, wd) {
     const entries = countPapers(list, wd);
     if (!entries.length) return '<span class="empty-note">배달할 신문 없음</span>';
-    return entries.map(([n, c]) => `<span class="tag">${esc(n)} <em>${c}</em></span>`).join('');
+    return entries.map(([n, c]) => paperTag(n, c)).join('');
   }
   function sortUnits(list) {
     return list.slice().sort((a, b) => {
@@ -409,7 +432,7 @@
     const done = !off && isDone(h);
     const tags = off
       ? '<span class="tag plain">이 요일 배달 없음</span>'
-      : papers.map(n => `<span class="tag">${esc(n)}</span>`).join('');
+      : papers.map(n => paperTag(n)).join('');
     return `<div class="unit ${done ? 'done' : ''} ${off ? 'off' : ''}" data-id="${h.id}">
       <button class="check" data-act="toggle" aria-label="배달 완료">✓</button>
       <div class="body" data-act="toggle">
@@ -428,7 +451,7 @@
     const st = statusOf(inE);
     if (!st.total && !ui.showOff) return '';
     const shown = sortUnits(ui.showOff ? inE : st.active);
-    const step = s.extra ? '' : `<i class="step">${num}</i>`;
+    const step = `<i class="step">${num}</i>`;
     return `<div class="card entrance ${st.complete ? 'complete' : ''} ${!st.total ? 'empty' : ''}" id="stop-${idx}" data-stop="${idx}">
       <div class="entrance-head">
         <div class="entrance-title">
@@ -453,13 +476,10 @@
         ${active.length ? '<button class="btn small primary" id="jumpBtn">남은 곳으로 ↓</button>' : ''}
       </div>
       <div class="section-title">배달 순서 (402동 → 415동)</div>`;
-    let extraTitle = false, body = '', num = 0;
+    let body = '', num = 0;
     STOPS.forEach((s, i) => {
       const card = stopHtml(s, i, num + 1);
-      if (!card) return;
-      if (s.extra && !extraTitle) { body += `<div class="section-title">동선에 없는 입구</div>`; extraTitle = true; }
-      if (!s.extra) num++;
-      body += card;
+      if (card) { num++; body += card; }
     });
     html += body || `<p class="empty-note" style="text-align:center;padding:20px 0">${DAY_NAMES[selDay]}요일에 배달할 곳이 없어요</p>`;
     if (!data.households.length) {
