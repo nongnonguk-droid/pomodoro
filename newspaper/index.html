@@ -240,19 +240,26 @@
   const BUILDINGS = Array.from({ length: 15 }, (_, i) => String(401 + i)); // 401 ~ 415
   const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];            // 월 ~ 일 (Date.getDay 값)
   const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
-  // 동별 입구 수 (입구 하나에 2개 라인: 1입구=1·2호, 2입구=3·4호, 3입구=5·6호)
-  const ENTRANCE_COUNT = {
-    401: 3, 402: 3, 403: 3, 404: 2, 405: 1,
-    406: 2, 407: 1, 408: 1, 409: 1, 410: 2,
-    411: 2, 412: 1, 413: 1, 414: 1, 415: 1,
+  // 동별 입구 구성: 입구마다 들어가는 호(라인) 목록
+  const L3 = [[1, 2], [3, 4], [5, 6]];   // 입구 3개
+  const L2 = [[1, 2], [3, 4]];           // 입구 2개
+  const L1 = [[1, 2]];                   // 입구 1개 (1·2호)
+  const L1x4 = [[1, 2, 3, 4]];           // 입구 1개 (1~4호)
+  const LAYOUT = {
+    401: L3, 402: L3, 403: L3, 404: L2, 405: L1x4,
+    406: L2, 407: L1x4, 408: L1, 409: L1, 410: L2,
+    411: L2, 412: L1, 413: L1, 414: L1, 415: L1x4,
   };
-  const entranceCount = b => ENTRANCE_COUNT[b] || 3;
-  const entrancesOf = b => Array.from({ length: entranceCount(b) }, (_, i) => ({
-    no: i + 1, label: `${i * 2 + 1}·${i * 2 + 2}호 라인`,
+  const layoutOf = b => LAYOUT[b] || L3;
+  const entrancesOf = b => layoutOf(b).map((lines, i) => ({
+    no: i + 1,
+    lines,
+    label: lines.length > 2 ? `${lines[0]}~${lines[lines.length - 1]}호 라인` : `${lines.join('·')}호 라인`,
   }));
-  // 해당 동에 있을 수 있는 호수인지 (끝 두 자리가 입구 수 × 2 이하)
-  const unitFits = (b, pu) => pu && pu.entrance <= entranceCount(b);
-  const lineRangeText = b => `01~${pad(entranceCount(b) * 2)}`;
+  // 호수가 몇 번 입구인지 (없는 라인이면 0)
+  const entranceOf = (b, pu) => pu ? layoutOf(b).findIndex(ls => ls.includes(pu.line)) + 1 : 0;
+  const unitFits = (b, pu) => entranceOf(b, pu) > 0;
+  const lineRangeText = b => `01~${pad(Math.max(...layoutOf(b).flat()))}`;
   const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
     '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -321,7 +328,7 @@
     const line = parseInt(s.slice(-2), 10);
     const floor = parseInt(s.slice(0, -2), 10);
     if (!floor || line < 1 || line > 6) return null;
-    return { floor, line, entrance: Math.ceil(line / 2), unit: String(floor) + pad(line) };
+    return { floor, line, unit: String(floor) + pad(line) };
   }
 
   // 해당 요일에 받는 신문 목록
@@ -432,7 +439,7 @@
     const ents = entrancesOf(b);
     for (const e of ents) {
       // 혹시 범위를 넘는 호수가 있으면 마지막 입구에 함께 표시
-      const inE = all.filter(h => Math.min(parseUnit(h.unit)?.entrance || 1, ents.length) === e.no);
+      const inE = all.filter(h => (entranceOf(b, parseUnit(h.unit)) || ents.length) === e.no);
       const active = activeOn(inE, selDay);
       const done = active.filter(isDone).length;
       const complete = active.length && done === active.length;
