@@ -101,18 +101,45 @@
   .tag.plain { background: var(--chip); color: var(--text); font-weight: 500; }
   .empty-note { color: var(--muted); font-size: 14px; }
 
-  .buildings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  @media (min-width: 520px) { .buildings { grid-template-columns: repeat(5, 1fr); } }
-  .bld {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 12px 10px 10px; text-align: left;
+
+  /* 홈: 동 × 입구 */
+  .bld-list { display: grid; gap: 8px; }
+  .bld-row {
+    display: grid; grid-template-columns: 74px 1fr; gap: 6px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px;
   }
-  .bld b { font-size: 18px; display: block; }
-  .bld span { font-size: 13px; color: var(--muted); display: block; margin: 3px 0 7px; }
-  .bld .bar { height: 6px; }
-  .bld.none { opacity: .55; }
-  .bld.complete { border-color: var(--done); background: var(--done-soft); }
-  .bld.complete span { color: var(--done); font-weight: 600; }
+  .bld-row.none { opacity: .55; }
+  .bld-row.complete { border-color: var(--done); }
+  .bld-name {
+    border: 0; background: transparent; text-align: left; padding: 6px 4px 6px 8px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .bld-name b { font-size: 18px; }
+  .bld-name span { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .bld-row.complete .bld-name span { color: var(--done); font-weight: 700; }
+  .ents { display: grid; gap: 6px; }
+  .ent {
+    border: 1px solid var(--line); background: var(--bg); border-radius: 10px;
+    padding: 7px 8px 8px; text-align: left; min-width: 0;
+  }
+  .ent b { display: block; font-size: 14px; white-space: nowrap; }
+  .ent b small { font-weight: 500; color: var(--muted); font-size: 11px; margin-left: 2px; }
+  .ent span { display: block; font-size: 12px; color: var(--muted); margin: 2px 0 5px; }
+  .ent .bar { height: 5px; }
+  .ent.none { opacity: .5; }
+  .ent.complete { border-color: var(--done); background: var(--done-soft); }
+  .ent.complete span { color: var(--done); font-weight: 700; }
+
+  /* 동 화면: 입구 탭 */
+  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 12px; padding: 7px 2px; font-size: 14px; line-height: 1.25; white-space: nowrap;
+  }
+  .tab small { display: block; color: var(--muted); font-size: 12px; }
+  .tab.active { background: var(--text); border-color: var(--text); color: var(--card); font-weight: 700; }
+  .tab.active small { color: var(--card); opacity: .75; }
+  .tab.complete:not(.active) { border-color: var(--done); color: var(--done); }
 
   .entrance { margin-bottom: 12px; padding: 0; overflow: hidden; }
   .entrance-head { padding: 13px 14px 12px; border-bottom: 1px solid var(--line); }
@@ -360,9 +387,27 @@
   }
 
   // ---------- 라우팅 ----------
+  const routeMatch = () => location.hash.match(/^#\/(\d{3})(?:\/(\d))?$/);
   const currentBuilding = () => {
-    const m = location.hash.match(/^#\/(\d{3})$/);
+    const m = routeMatch();
     return m && BUILDINGS.includes(m[1]) ? m[1] : null;
+  };
+  // 선택한 입구 번호 (전체 보기면 0)
+  const currentEntrance = () => {
+    const m = routeMatch(), b = currentBuilding();
+    const n = m && m[2] ? Number(m[2]) : 0;
+    return b && n >= 1 && n <= entrancesOf(b).length ? n : 0;
+  };
+  // 입구에 속한 집 (범위를 넘는 호수는 마지막 입구로)
+  const householdsIn = (b, no) => {
+    const last = entrancesOf(b).length;
+    return householdsOf(b).filter(h => (entranceOf(b, parseUnit(h.unit)) || last) === no);
+  };
+  const statusOf = list => {
+    const active = activeOn(list, selDay);
+    const done = active.filter(isDone).length;
+    return { active, done, total: active.length, complete: active.length > 0 && done === active.length,
+      pct: active.length ? done / active.length * 100 : 0 };
   };
   window.addEventListener('hashchange', render);
 
@@ -376,12 +421,12 @@
     }).join('');
   }
 
-  function renderProgress(b) {
-    const list = activeOn(b ? householdsOf(b) : data.households, selDay);
+  function renderProgress(b, ent) {
+    const list = activeOn(b ? (ent ? householdsIn(b, ent) : householdsOf(b)) : data.households, selDay);
     const done = list.filter(isDone).length;
     const pct = list.length ? Math.round(done / list.length * 100) : 0;
     const d = dateForWeekday(selDay);
-    const scope = b ? `${b}동 진행률` : '전체 진행률';
+    const scope = b ? `${b}동${ent ? ` ${ent}번 입구` : ''} 진행률` : '전체 진행률';
     $('#progLabel').textContent = `${scope} · ${d.getMonth() + 1}/${d.getDate()}(${DAY_NAMES[selDay]})`;
     $('#progText').textContent = list.length ? `${done} / ${list.length}집 (${pct}%)` : '배달 없음';
     $('#progBar').firstElementChild.style.width = pct + '%';
@@ -392,16 +437,22 @@
     const active = activeOn(data.households, selDay);
     let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
       <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
-      <div class="section-title">동 선택</div><div class="buildings">`;
+      <div class="section-title">동 · 입구 선택</div><div class="bld-list">`;
     for (const b of BUILDINGS) {
-      const list = activeOn(householdsOf(b), selDay);
-      const done = list.filter(isDone).length;
-      const pct = list.length ? done / list.length * 100 : 0;
-      const complete = list.length && done === list.length;
-      const status = !list.length ? '배달 없음' : complete ? '완료 ✓' : `${done} / ${list.length}집`;
-      html += `<button class="bld ${!list.length ? 'none' : ''} ${complete ? 'complete' : ''}" data-bld="${b}">
-        <b>${b}동</b><span>${status}</span>
-        <div class="bar ${complete ? 'complete' : ''}"><i style="width:${pct}%"></i></div></button>`;
+      const st = statusOf(householdsOf(b));
+      const ents = entrancesOf(b);
+      const bStatus = !st.total ? '배달 없음' : st.complete ? '완료 ✓' : `${st.done} / ${st.total}집`;
+      html += `<div class="bld-row ${!st.total ? 'none' : ''} ${st.complete ? 'complete' : ''}">
+        <button class="bld-name" data-bld="${b}"><b>${b}동</b><span>${bStatus}</span></button>
+        <div class="ents" style="grid-template-columns:repeat(${ents.length},1fr)">`;
+      for (const e of ents) {
+        const es = statusOf(householdsIn(b, e.no));
+        const eStatus = !es.total ? '없음' : es.complete ? '완료 ✓' : `${es.done} / ${es.total}집`;
+        html += `<button class="ent ${!es.total ? 'none' : ''} ${es.complete ? 'complete' : ''}" data-bld="${b}" data-ent="${e.no}">
+          <b>${e.no}번 입구${ents.length === 1 ? `<small>${e.label}</small>` : ''}</b><span>${eStatus}</span>
+          <div class="bar ${es.complete ? 'complete' : ''}"><i style="width:${es.pct}%"></i></div></button>`;
+      }
+      html += '</div></div>';
     }
     html += '</div>';
     if (!data.households.length) {
@@ -429,17 +480,27 @@
     </div>`;
   }
 
-  function renderBuilding(b) {
+  function renderBuilding(b, sel) {
     const all = householdsOf(b);
-    let html = `<div class="toolbar">
+    const ents = entrancesOf(b);
+    let html = '';
+    if (ents.length > 1) {
+      const st = statusOf(all);
+      html += `<div class="tabs"><button class="tab ${!sel ? 'active' : ''} ${st.complete ? 'complete' : ''}" data-tab="0">전체<small>${st.done}/${st.total}</small></button>`;
+      for (const e of ents) {
+        const es = statusOf(householdsIn(b, e.no));
+        html += `<button class="tab ${sel === e.no ? 'active' : ''} ${es.complete ? 'complete' : ''}" data-tab="${e.no}">${e.no}번 입구<small>${es.done}/${es.total}</small></button>`;
+      }
+      html += '</div>';
+    }
+    html += `<div class="toolbar">
       <label class="switch"><input type="checkbox" id="showOff" ${ui.showOff ? 'checked' : ''}> 배달 없는 집도 보기</label>
       <span class="grow"></span>
       <button class="btn small" id="sortBtn">${ui.sortDesc ? '높은 층부터 ↓' : '낮은 층부터 ↑'}</button>
     </div>`;
-    const ents = entrancesOf(b);
     for (const e of ents) {
-      // 혹시 범위를 넘는 호수가 있으면 마지막 입구에 함께 표시
-      const inE = all.filter(h => (entranceOf(b, parseUnit(h.unit)) || ents.length) === e.no);
+      if (sel && sel !== e.no) continue;
+      const inE = householdsIn(b, e.no);
       const active = activeOn(inE, selDay);
       const done = active.filter(isDone).length;
       const complete = active.length && done === active.length;
@@ -468,8 +529,9 @@
     $('#backBtn').hidden = !b;
     $('#fab').hidden = !b;
     renderDays();
-    renderProgress(b);
-    b ? renderBuilding(b) : renderHome();
+    const ent = currentEntrance();
+    renderProgress(b, ent);
+    b ? renderBuilding(b, ent) : renderHome();
     $('#paperNames').innerHTML = allPaperNames().map(n => `<option value="${esc(n)}">`).join('');
   }
 
@@ -488,7 +550,16 @@
 
   $('#main').addEventListener('click', e => {
     const bld = e.target.closest('[data-bld]');
-    if (bld) { location.hash = '#/' + bld.dataset.bld; window.scrollTo(0, 0); return; }
+    if (bld) {
+      location.hash = '#/' + bld.dataset.bld + (bld.dataset.ent ? '/' + bld.dataset.ent : '');
+      window.scrollTo(0, 0); return;
+    }
+    const tab = e.target.closest('[data-tab]');
+    if (tab) {
+      const n = Number(tab.dataset.tab);
+      location.replace('#/' + currentBuilding() + (n ? '/' + n : ''));
+      return;
+    }
 
     if (e.target.id === 'sortBtn') { ui.sortDesc = !ui.sortDesc; saveUi(); render(); return; }
     if (e.target.id === 'resetBldBtn') {
