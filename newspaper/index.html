@@ -130,6 +130,17 @@
   .ent.complete { border-color: var(--done); background: var(--done-soft); }
   .ent.complete span { color: var(--done); font-weight: 700; }
 
+  .step {
+    display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 99px; background: var(--chip); color: var(--muted);
+    font-size: 11px; font-style: normal; font-weight: 700; margin-right: 4px; vertical-align: 1px;
+  }
+  .ent.complete .step { background: var(--done); color: #fff; }
+  .route-nav { display: flex; gap: 8px; margin: 4px 0 12px; }
+  .route-nav .btn { padding: 13px 12px; font-size: 15px; }
+  .route-nav .next { flex: 1; text-align: center; }
+  .route-nav .next small { display: block; font-size: 12px; opacity: .8; font-weight: 500; }
+
   /* 동 화면: 입구 탭 */
   .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin-bottom: 12px; }
   .tab {
@@ -287,6 +298,22 @@
   const entranceOf = (b, pu) => pu ? layoutOf(b).findIndex(ls => ls.includes(pu.line)) + 1 : 0;
   const unitFits = (b, pu) => entranceOf(b, pu) > 0;
   const lineRangeText = b => `01~${pad(Math.max(...layoutOf(b).flat()))}`;
+
+  // 배달 동선 (지하1층 주차장 기준): [동, [입구 순서]]
+  const ROUTE = [
+    ['402', [1, 2, 3]], ['403', [3, 2, 1]], ['405', [1]], ['406', [2]], ['407', [1]],
+    ['401', [3, 2, 1]], ['406', [1]], ['410', [1, 2]], ['411', [1, 2]], ['404', [1, 2]],
+    ['412', [1]], ['413', [1]], ['414', [1]], ['415', [1]],
+  ];
+  // 동선에 빠진 입구는 맨 뒤에 붙임
+  const ROUTE_GROUPS = (() => {
+    const seen = new Set(ROUTE.flatMap(([b, ns]) => ns.map(n => b + '-' + n)));
+    const extra = BUILDINGS.map(b => [b, entrancesOf(b).map(e => e.no).filter(n => !seen.has(b + '-' + n))])
+      .filter(([, ns]) => ns.length);
+    return [...ROUTE.map(g => [...g, false]), ...extra.map(g => [...g, true])];
+  })();
+  const STOPS = ROUTE_GROUPS.flatMap(([b, ns, extra]) => ns.map(no => ({ b, no, extra })));
+  const stopIndex = (b, no) => STOPS.findIndex(s => s.b === b && s.no === no);
   const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
     '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -437,19 +464,26 @@
     const active = activeOn(data.households, selDay);
     let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
       <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
-      <div class="section-title">동 · 입구 선택</div><div class="bld-list">`;
-    for (const b of BUILDINGS) {
-      const st = statusOf(householdsOf(b));
+      <div class="section-title">배달 동선 순서 (402동 → 415동)</div><div class="bld-list">`;
+    let extraTitle = false;
+    for (const [b, nos, extra] of ROUTE_GROUPS) {
+      if (extra && !extraTitle) {
+        html += `</div><div class="section-title">동선에 없는 입구</div><div class="bld-list">`;
+        extraTitle = true;
+      }
       const ents = entrancesOf(b);
+      const rowEnts = nos.map(n => ents[n - 1]).filter(Boolean);
+      const st = statusOf(rowEnts.flatMap(e => householdsIn(b, e.no)));
       const bStatus = !st.total ? '배달 없음' : st.complete ? '완료 ✓' : `${st.done} / ${st.total}집`;
       html += `<div class="bld-row ${!st.total ? 'none' : ''} ${st.complete ? 'complete' : ''}">
         <button class="bld-name" data-bld="${b}"><b>${b}동</b><span>${bStatus}</span></button>
-        <div class="ents" style="grid-template-columns:repeat(${ents.length},1fr)">`;
-      for (const e of ents) {
+        <div class="ents" style="grid-template-columns:repeat(${rowEnts.length},1fr)">`;
+      for (const e of rowEnts) {
         const es = statusOf(householdsIn(b, e.no));
         const eStatus = !es.total ? '없음' : es.complete ? '완료 ✓' : `${es.done} / ${es.total}집`;
+        const step = extra ? '' : `<i class="step">${stopIndex(b, e.no) + 1}</i>`;
         html += `<button class="ent ${!es.total ? 'none' : ''} ${es.complete ? 'complete' : ''}" data-bld="${b}" data-ent="${e.no}">
-          <b>${e.no}번 입구${ents.length === 1 ? `<small>${e.label}</small>` : ''}</b><span>${eStatus}</span>
+          <b>${step}${e.no}번 입구${rowEnts.length === 1 ? `<small>${e.label}</small>` : ''}</b><span>${eStatus}</span>
           <div class="bar ${es.complete ? 'complete' : ''}"><i style="width:${es.pct}%"></i></div></button>`;
       }
       html += '</div></div>';
@@ -480,6 +514,27 @@
     </div>`;
   }
 
+  // 동선상 이전/다음 입구 (그 요일에 배달 없는 입구는 건너뜀)
+  function neighborStop(b, no, dir) {
+    for (let i = stopIndex(b, no) + dir; i >= 0 && i < STOPS.length; i += dir) {
+      const s = STOPS[i];
+      if (statusOf(householdsIn(s.b, s.no)).total) return s;
+    }
+    return null;
+  }
+  function routeNavHtml(b, no) {
+    const prev = neighborStop(b, no, -1), next = neighborStop(b, no, 1);
+    const done = statusOf(householdsIn(b, no));
+    const finished = !done.total || done.complete;
+    const nextBtn = next
+      ? `<button class="btn next ${finished ? 'primary' : ''}" data-go="${next.b}/${next.no}">
+          다음: ${next.b}동 ${next.no}번 입구 →<small>${statusOf(householdsIn(next.b, next.no)).total}집 배달</small></button>`
+      : `<button class="btn next ${finished ? 'primary' : ''}" data-go="">마지막 입구예요 🎉<small>처음 화면으로</small></button>`;
+    return `<div class="route-nav">
+      ${prev ? `<button class="btn" data-go="${prev.b}/${prev.no}" aria-label="이전 입구">← 이전</button>` : ''}
+      ${nextBtn}</div>`;
+  }
+
   function renderBuilding(b, sel) {
     const all = householdsOf(b);
     const ents = entrancesOf(b);
@@ -498,7 +553,8 @@
       <span class="grow"></span>
       <button class="btn small" id="sortBtn">${ui.sortDesc ? '높은 층부터 ↓' : '낮은 층부터 ↑'}</button>
     </div>`;
-    for (const e of ents) {
+    const ordered = ents.slice().sort((x, y) => stopIndex(b, x.no) - stopIndex(b, y.no));
+    for (const e of ordered) {
       if (sel && sel !== e.no) continue;
       const inE = householdsIn(b, e.no);
       const active = activeOn(inE, selDay);
@@ -516,6 +572,7 @@
         ${shown.map(unitHtml).join('') || ''}
       </div>`;
     }
+    if (sel) html += routeNavHtml(b, sel);
     if (all.length) {
       html += `<div style="text-align:center;margin-top:6px">
         <button class="btn small" id="resetBldBtn">이 동 체크 초기화</button></div>`;
@@ -552,6 +609,11 @@
     const bld = e.target.closest('[data-bld]');
     if (bld) {
       location.hash = '#/' + bld.dataset.bld + (bld.dataset.ent ? '/' + bld.dataset.ent : '');
+      window.scrollTo(0, 0); return;
+    }
+    const go = e.target.closest('[data-go]');
+    if (go) {
+      if (go.dataset.go) location.replace('#/' + go.dataset.go); else location.hash = '';
       window.scrollTo(0, 0); return;
     }
     const tab = e.target.closest('[data-tab]');
