@@ -102,55 +102,14 @@
   .empty-note { color: var(--muted); font-size: 14px; }
 
 
-  /* 홈: 동 × 입구 */
-  .bld-list { display: grid; gap: 8px; }
-  .bld-row {
-    display: grid; grid-template-columns: 74px 1fr; gap: 6px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px;
-  }
-  .bld-row.none { opacity: .55; }
-  .bld-row.complete { border-color: var(--done); }
-  .bld-name {
-    border: 0; background: transparent; text-align: left; padding: 6px 4px 6px 8px;
-    display: flex; flex-direction: column; justify-content: center;
-  }
-  .bld-name b { font-size: 18px; }
-  .bld-name span { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .bld-row.complete .bld-name span { color: var(--done); font-weight: 700; }
-  .ents { display: grid; gap: 6px; }
-  .ent {
-    border: 1px solid var(--line); background: var(--bg); border-radius: 10px;
-    padding: 7px 8px 8px; text-align: left; min-width: 0;
-  }
-  .ent b { display: block; font-size: 14px; white-space: nowrap; }
-  .ent b small { font-weight: 500; color: var(--muted); font-size: 11px; margin-left: 2px; }
-  .ent span { display: block; font-size: 12px; color: var(--muted); margin: 2px 0 5px; }
-  .ent .bar { height: 5px; }
-  .ent.none { opacity: .5; }
-  .ent.complete { border-color: var(--done); background: var(--done-soft); }
-  .ent.complete span { color: var(--done); font-weight: 700; }
-
   .step {
-    display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px;
-    border-radius: 99px; background: var(--chip); color: var(--muted);
-    font-size: 11px; font-style: normal; font-weight: 700; margin-right: 4px; vertical-align: 1px;
+    display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px;
+    border-radius: 99px; background: var(--primary); color: #fff;
+    font-size: 12px; font-style: normal; font-weight: 800; margin-right: 6px; vertical-align: 2px;
   }
-  .ent.complete .step { background: var(--done); color: #fff; }
-  .route-nav { display: flex; gap: 8px; margin: 4px 0 12px; }
-  .route-nav .btn { padding: 13px 12px; font-size: 15px; }
-  .route-nav .next { flex: 1; text-align: center; }
-  .route-nav .next small { display: block; font-size: 12px; opacity: .8; font-weight: 500; }
-
-  /* 동 화면: 입구 탭 */
-  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin-bottom: 12px; }
-  .tab {
-    border: 1px solid var(--line); background: var(--card);
-    border-radius: 12px; padding: 7px 2px; font-size: 14px; line-height: 1.25; white-space: nowrap;
-  }
-  .tab small { display: block; color: var(--muted); font-size: 12px; }
-  .tab.active { background: var(--text); border-color: var(--text); color: var(--card); font-weight: 700; }
-  .tab.active small { color: var(--card); opacity: .75; }
-  .tab.complete:not(.active) { border-color: var(--done); color: var(--done); }
+  .entrance.complete .step { background: var(--done); }
+  .entrance.empty { opacity: .55; }
+  .entrance { scroll-margin-top: 200px; }
 
   .entrance { margin-bottom: 12px; padding: 0; overflow: hidden; }
   .entrance-head { padding: 13px 14px 12px; border-bottom: 1px solid var(--line); }
@@ -250,7 +209,6 @@
 
 <header>
   <div class="topbar">
-    <button class="icon-btn" id="backBtn" hidden aria-label="뒤로">←</button>
     <h1 id="title">신문 배달</h1>
     <button class="icon-btn" id="menuBtn" aria-label="설정">⚙︎</button>
   </div>
@@ -263,7 +221,7 @@
 
 <main id="main"></main>
 
-<button class="fab" id="fab" hidden>+ 호수 추가</button>
+<button class="fab" id="fab">+ 호수 추가</button>
 
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
@@ -313,7 +271,6 @@
     return [...ROUTE.map(g => [...g, false]), ...extra.map(g => [...g, true])];
   })();
   const STOPS = ROUTE_GROUPS.flatMap(([b, ns, extra]) => ns.map(no => ({ b, no, extra })));
-  const stopIndex = (b, no) => STOPS.findIndex(s => s.b === b && s.no === no);
   const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
     '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -335,11 +292,11 @@
   let data = store.get(KEY_DATA, { households: [] });
   if (!Array.isArray(data.households)) data = { households: [] };
   let progress = store.get(KEY_PROG, {});          // { 'YYYY-MM-DD': { householdId: true } }
-  let ui = Object.assign({ showOff: false, sortDesc: false }, store.get(KEY_UI, {}));
+  let ui = Object.assign({ showOff: false }, store.get(KEY_UI, {}));
 
   const saveData = () => store.set(KEY_DATA, data);
   const saveProg = () => store.set(KEY_PROG, progress);
-  const saveUi = () => store.set(KEY_UI, { showOff: ui.showOff, sortDesc: ui.sortDesc });
+  const saveUi = () => store.set(KEY_UI, { showOff: ui.showOff });
 
   // ---------- 날짜 ----------
   const pad = n => String(n).padStart(2, '0');
@@ -403,7 +360,7 @@
   function sortUnits(list) {
     return list.slice().sort((a, b) => {
       const pa = parseUnit(a.unit), pb = parseUnit(b.unit);
-      const f = (pa.floor - pb.floor) * (ui.sortDesc ? -1 : 1);
+      const f = pb.floor - pa.floor; // 높은 층이 위로
       return f || pa.line - pb.line;
     });
   }
@@ -413,18 +370,7 @@
     return [...set];
   }
 
-  // ---------- 라우팅 ----------
-  const routeMatch = () => location.hash.match(/^#\/(\d{3})(?:\/(\d))?$/);
-  const currentBuilding = () => {
-    const m = routeMatch();
-    return m && BUILDINGS.includes(m[1]) ? m[1] : null;
-  };
-  // 선택한 입구 번호 (전체 보기면 0)
-  const currentEntrance = () => {
-    const m = routeMatch(), b = currentBuilding();
-    const n = m && m[2] ? Number(m[2]) : 0;
-    return b && n >= 1 && n <= entrancesOf(b).length ? n : 0;
-  };
+  // ---------- 입구/진행 ----------
   // 입구에 속한 집 (범위를 넘는 호수는 마지막 입구로)
   const householdsIn = (b, no) => {
     const last = entrancesOf(b).length;
@@ -433,10 +379,8 @@
   const statusOf = list => {
     const active = activeOn(list, selDay);
     const done = active.filter(isDone).length;
-    return { active, done, total: active.length, complete: active.length > 0 && done === active.length,
-      pct: active.length ? done / active.length * 100 : 0 };
+    return { active, done, total: active.length, complete: active.length > 0 && done === active.length };
   };
-  window.addEventListener('hashchange', render);
 
   // ---------- 렌더링 ----------
   function renderDays() {
@@ -448,52 +392,15 @@
     }).join('');
   }
 
-  function renderProgress(b, ent) {
-    const list = activeOn(b ? (ent ? householdsIn(b, ent) : householdsOf(b)) : data.households, selDay);
+  function renderProgress() {
+    const list = activeOn(data.households, selDay);
     const done = list.filter(isDone).length;
     const pct = list.length ? Math.round(done / list.length * 100) : 0;
     const d = dateForWeekday(selDay);
-    const scope = b ? `${b}동${ent ? ` ${ent}번 입구` : ''} 진행률` : '전체 진행률';
-    $('#progLabel').textContent = `${scope} · ${d.getMonth() + 1}/${d.getDate()}(${DAY_NAMES[selDay]})`;
+    $('#progLabel').textContent = `전체 진행률 · ${d.getMonth() + 1}/${d.getDate()}(${DAY_NAMES[selDay]})`;
     $('#progText').textContent = list.length ? `${done} / ${list.length}집 (${pct}%)` : '배달 없음';
     $('#progBar').firstElementChild.style.width = pct + '%';
     $('#progBar').classList.toggle('complete', list.length > 0 && done === list.length);
-  }
-
-  function renderHome() {
-    const active = activeOn(data.households, selDay);
-    let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
-      <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
-      <div class="section-title">배달 동선 순서 (402동 → 415동)</div><div class="bld-list">`;
-    let extraTitle = false;
-    for (const [b, nos, extra] of ROUTE_GROUPS) {
-      if (extra && !extraTitle) {
-        html += `</div><div class="section-title">동선에 없는 입구</div><div class="bld-list">`;
-        extraTitle = true;
-      }
-      const ents = entrancesOf(b);
-      const rowEnts = nos.map(n => ents[n - 1]).filter(Boolean);
-      const st = statusOf(rowEnts.flatMap(e => householdsIn(b, e.no)));
-      const bStatus = !st.total ? '배달 없음' : st.complete ? '완료 ✓' : `${st.done} / ${st.total}집`;
-      html += `<div class="bld-row ${!st.total ? 'none' : ''} ${st.complete ? 'complete' : ''}">
-        <button class="bld-name" data-bld="${b}"><b>${b}동</b><span>${bStatus}</span></button>
-        <div class="ents" style="grid-template-columns:repeat(${rowEnts.length},1fr)">`;
-      for (const e of rowEnts) {
-        const es = statusOf(householdsIn(b, e.no));
-        const eStatus = !es.total ? '없음' : es.complete ? '완료 ✓' : `${es.done} / ${es.total}집`;
-        const step = extra ? '' : `<i class="step">${stopIndex(b, e.no) + 1}</i>`;
-        html += `<button class="ent ${!es.total ? 'none' : ''} ${es.complete ? 'complete' : ''}" data-bld="${b}" data-ent="${e.no}">
-          <b>${step}${e.no}번 입구${rowEnts.length === 1 ? `<small>${e.label}</small>` : ''}</b><span>${eStatus}</span>
-          <div class="bar ${es.complete ? 'complete' : ''}"><i style="width:${es.pct}%"></i></div></button>`;
-      }
-      html += '</div></div>';
-    }
-    html += '</div>';
-    if (!data.households.length) {
-      html += `<p class="hint" style="margin-top:16px">아직 등록된 집이 없어요. 동을 눌러 <b>+ 호수 추가</b>로 등록하거나,
-        ⚙︎ 설정의 <b>한꺼번에 입력</b>으로 여러 집을 한 번에 넣을 수 있어요.</p>`;
-    }
-    $('#main').innerHTML = html;
   }
 
   function unitHtml(h) {
@@ -514,82 +421,62 @@
     </div>`;
   }
 
-  // 동선상 이전/다음 입구 (그 요일에 배달 없는 입구는 건너뜀)
-  function neighborStop(b, no, dir) {
-    for (let i = stopIndex(b, no) + dir; i >= 0 && i < STOPS.length; i += dir) {
-      const s = STOPS[i];
-      if (statusOf(householdsIn(s.b, s.no)).total) return s;
-    }
-    return null;
-  }
-  function routeNavHtml(b, no) {
-    const prev = neighborStop(b, no, -1), next = neighborStop(b, no, 1);
-    const done = statusOf(householdsIn(b, no));
-    const finished = !done.total || done.complete;
-    const nextBtn = next
-      ? `<button class="btn next ${finished ? 'primary' : ''}" data-go="${next.b}/${next.no}">
-          다음: ${next.b}동 ${next.no}번 입구 →<small>${statusOf(householdsIn(next.b, next.no)).total}집 배달</small></button>`
-      : `<button class="btn next ${finished ? 'primary' : ''}" data-go="">마지막 입구예요 🎉<small>처음 화면으로</small></button>`;
-    return `<div class="route-nav">
-      ${prev ? `<button class="btn" data-go="${prev.b}/${prev.no}" aria-label="이전 입구">← 이전</button>` : ''}
-      ${nextBtn}</div>`;
-  }
-
-  function renderBuilding(b, sel) {
-    const all = householdsOf(b);
-    const ents = entrancesOf(b);
-    let html = '';
-    if (ents.length > 1) {
-      const st = statusOf(all);
-      html += `<div class="tabs"><button class="tab ${!sel ? 'active' : ''} ${st.complete ? 'complete' : ''}" data-tab="0">전체<small>${st.done}/${st.total}</small></button>`;
-      for (const e of ents) {
-        const es = statusOf(householdsIn(b, e.no));
-        html += `<button class="tab ${sel === e.no ? 'active' : ''} ${es.complete ? 'complete' : ''}" data-tab="${e.no}">${e.no}번 입구<small>${es.done}/${es.total}</small></button>`;
-      }
-      html += '</div>';
-    }
-    html += `<div class="toolbar">
-      <label class="switch"><input type="checkbox" id="showOff" ${ui.showOff ? 'checked' : ''}> 배달 없는 집도 보기</label>
-      <span class="grow"></span>
-      <button class="btn small" id="sortBtn">${ui.sortDesc ? '높은 층부터 ↓' : '낮은 층부터 ↑'}</button>
-    </div>`;
-    const ordered = ents.slice().sort((x, y) => stopIndex(b, x.no) - stopIndex(b, y.no));
-    for (const e of ordered) {
-      if (sel && sel !== e.no) continue;
-      const inE = householdsIn(b, e.no);
-      const active = activeOn(inE, selDay);
-      const done = active.filter(isDone).length;
-      const complete = active.length && done === active.length;
-      const shown = sortUnits(ui.showOff ? inE : active);
-      html += `<div class="card entrance ${complete ? 'complete' : ''}">
-        <div class="entrance-head">
-          <div class="entrance-title">
-            <h2>${e.no}번 입구<small>${e.label}</small></h2>
-            <span>${active.length ? (complete ? '완료 ✓' : `${done} / ${active.length}집`) : ''}</span>
-          </div>
-          <div class="totals">${totalsHtml(active, selDay)}</div>
+  // 입구 카드: 맨 위에 챙길 신문 합계, 그 아래 호수 (높은 층부터)
+  function stopHtml(s, idx, num) {
+    const e = entrancesOf(s.b)[s.no - 1];
+    const inE = householdsIn(s.b, s.no);
+    const st = statusOf(inE);
+    if (!st.total && !ui.showOff) return '';
+    const shown = sortUnits(ui.showOff ? inE : st.active);
+    const step = s.extra ? '' : `<i class="step">${num}</i>`;
+    return `<div class="card entrance ${st.complete ? 'complete' : ''} ${!st.total ? 'empty' : ''}" id="stop-${idx}" data-stop="${idx}">
+      <div class="entrance-head">
+        <div class="entrance-title">
+          <h2>${step}${s.b}동 ${s.no}번 입구<small>${e.label}</small></h2>
+          <span>${st.total ? (st.complete ? '완료 ✓' : `${st.done} / ${st.total}집`) : '배달 없음'}</span>
         </div>
-        ${shown.map(unitHtml).join('') || ''}
-      </div>`;
-    }
-    if (sel) html += routeNavHtml(b, sel);
-    if (all.length) {
-      html += `<div style="text-align:center;margin-top:6px">
-        <button class="btn small" id="resetBldBtn">이 동 체크 초기화</button></div>`;
-    }
-    $('#main').innerHTML = html;
+        <div class="totals">${totalsHtml(st.active, selDay)}</div>
+      </div>
+      ${shown.map(unitHtml).join('')}
+    </div>`;
   }
 
   function render() {
-    const b = currentBuilding();
-    $('#title').textContent = b ? `${b}동` : '신문 배달';
-    $('#backBtn').hidden = !b;
-    $('#fab').hidden = !b;
     renderDays();
-    const ent = currentEntrance();
-    renderProgress(b, ent);
-    b ? renderBuilding(b, ent) : renderHome();
+    renderProgress();
+    const active = activeOn(data.households, selDay);
+    let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
+      <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
+      <div class="toolbar" style="margin-top:14px">
+        <label class="switch"><input type="checkbox" id="showOff" ${ui.showOff ? 'checked' : ''}> 배달 없는 곳도 보기</label>
+        <span class="grow"></span>
+        ${active.length ? '<button class="btn small primary" id="jumpBtn">남은 곳으로 ↓</button>' : ''}
+      </div>
+      <div class="section-title">배달 순서 (402동 → 415동)</div>`;
+    let extraTitle = false, body = '', num = 0;
+    STOPS.forEach((s, i) => {
+      const card = stopHtml(s, i, num + 1);
+      if (!card) return;
+      if (s.extra && !extraTitle) { body += `<div class="section-title">동선에 없는 입구</div>`; extraTitle = true; }
+      if (!s.extra) num++;
+      body += card;
+    });
+    html += body || `<p class="empty-note" style="text-align:center;padding:20px 0">${DAY_NAMES[selDay]}요일에 배달할 곳이 없어요</p>`;
+    if (!data.households.length) {
+      html += `<p class="hint">아직 등록된 집이 없어요. <b>+ 호수 추가</b>로 등록하거나,
+        ⚙︎ 설정의 <b>한꺼번에 입력</b>으로 여러 집을 한 번에 넣을 수 있어요.</p>`;
+    }
+    $('#main').innerHTML = html;
     $('#paperNames').innerHTML = allPaperNames().map(n => `<option value="${esc(n)}">`).join('');
+  }
+
+  // 아직 안 끝난 첫 입구로 스크롤
+  function jumpToRemaining() {
+    const el = [...document.querySelectorAll('.entrance[data-stop]')]
+      .find(c => !c.classList.contains('complete') && !c.classList.contains('empty'));
+    if (!el) { toast('모두 배달했어요 🎉'); return; }
+    const top = el.getBoundingClientRect().top + window.scrollY - $('header').offsetHeight - 8;
+    window.scrollTo({ top, behavior: 'smooth' });
   }
 
   // ---------- 이벤트 ----------
@@ -598,40 +485,13 @@
     if (!btn) return;
     selDay = Number(btn.dataset.day);
     render();
+    window.scrollTo(0, 0);
   });
-  $('#backBtn').addEventListener('click', () => {
-    if (history.length > 1 && currentBuilding()) history.back(); else location.hash = '';
-  });
-  $('#fab').addEventListener('click', () => openEditor(null, currentBuilding()));
+  $('#fab').addEventListener('click', () => openEditor(null));
   $('#menuBtn').addEventListener('click', openMenu);
 
   $('#main').addEventListener('click', e => {
-    const bld = e.target.closest('[data-bld]');
-    if (bld) {
-      location.hash = '#/' + bld.dataset.bld + (bld.dataset.ent ? '/' + bld.dataset.ent : '');
-      window.scrollTo(0, 0); return;
-    }
-    const go = e.target.closest('[data-go]');
-    if (go) {
-      if (go.dataset.go) location.replace('#/' + go.dataset.go); else location.hash = '';
-      window.scrollTo(0, 0); return;
-    }
-    const tab = e.target.closest('[data-tab]');
-    if (tab) {
-      const n = Number(tab.dataset.tab);
-      location.replace('#/' + currentBuilding() + (n ? '/' + n : ''));
-      return;
-    }
-
-    if (e.target.id === 'sortBtn') { ui.sortDesc = !ui.sortDesc; saveUi(); render(); return; }
-    if (e.target.id === 'resetBldBtn') {
-      const b = currentBuilding();
-      if (!confirm(`${b}동의 ${DAY_NAMES[selDay]}요일 체크를 모두 지울까요?`)) return;
-      const map = progress[selDateKey()] || {};
-      householdsOf(b).forEach(h => delete map[h.id]);
-      saveProg(); render(); return;
-    }
-
+    if (e.target.id === 'jumpBtn') { jumpToRemaining(); return; }
     const actEl = e.target.closest('[data-act]');
     const unitEl = e.target.closest('.unit');
     if (!actEl || !unitEl) return;
@@ -746,7 +606,7 @@
       Object.assign(rec, { building: b, unit: pu.unit, papers, memo: $('#edMemo').value.trim() });
       if (isNew) data.households.push(rec);
       saveData(); closeModal();
-      if (isNew && currentBuilding() !== b) location.hash = '#/' + b; else render();
+      render();
       toast(isNew ? '추가했어요' : '저장했어요');
     });
     if (isNew) setTimeout(() => $('#edUnit').focus(), 50);
@@ -794,7 +654,7 @@
     $('#mWipe').addEventListener('click', () => {
       if (!confirm('모든 집 정보와 체크 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
       data = { households: [] }; progress = {};
-      saveData(); saveProg(); closeModal(); location.hash = ''; render();
+      saveData(); saveProg(); closeModal(); render();
     });
   }
 
