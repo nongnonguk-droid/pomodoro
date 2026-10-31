@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1f6feb">
+<title>신문 배달</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #1d2329;
+    --muted: #6b7682;
+    --line: #e2e6ea;
+    --primary: #1f6feb;
+    --primary-soft: #e7f0ff;
+    --done: #1a9f53;
+    --done-soft: #e3f6ea;
+    --danger: #d1242f;
+    --chip: #eef1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1215;
+      --card: #1a1f24;
+      --text: #e6eaee;
+      --muted: #8b96a1;
+      --line: #2a3138;
+      --primary: #4c8dff;
+      --primary-soft: #1b2a44;
+      --done: #3fbf74;
+      --done-soft: #16301f;
+      --danger: #ff6b6b;
+      --chip: #252c33;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, textarea { font: inherit; color: var(--text); }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: calc(10px + env(safe-area-inset-top)) 16px 12px;
+  }
+  .topbar { display: flex; align-items: center; gap: 8px; }
+  .topbar h1 { font-size: 19px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 10px; padding: 7px 11px; font-size: 15px;
+  }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+  .day {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 10px; padding: 7px 0 6px; line-height: 1.15;
+  }
+  .day b { display: block; font-size: 16px; }
+  .day small { font-size: 11px; color: var(--muted); }
+  .day.today { border-color: var(--primary); }
+  .day.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .day.active small { color: rgba(255,255,255,.85); }
+  .day.sun b { color: var(--danger); }
+  .day.active.sun b { color: #fff; }
+
+  .progress-wrap { margin-top: 10px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .progress-label strong { color: var(--text); }
+  .bar { height: 10px; background: var(--chip); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--primary); border-radius: 99px; transition: width .25s; }
+  .bar.complete > i { background: var(--done); }
+
+  main { padding: 14px 16px 90px; max-width: 760px; margin: 0 auto; }
+
+  .section-title { font-size: 14px; color: var(--muted); margin: 18px 2px 8px; font-weight: 600; }
+  .section-title:first-child { margin-top: 2px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px;
+  }
+
+  .totals { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--primary-soft); color: var(--primary);
+    border-radius: 99px; padding: 5px 11px; font-size: 14px; font-weight: 600;
+  }
+  .tag em { font-style: normal; font-weight: 800; }
+  .tag.plain { background: var(--chip); color: var(--text); font-weight: 500; }
+  .empty-note { color: var(--muted); font-size: 14px; }
+
+  .buildings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (min-width: 520px) { .buildings { grid-template-columns: repeat(5, 1fr); } }
+  .bld {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 10px 10px; text-align: left;
+  }
+  .bld b { font-size: 18px; display: block; }
+  .bld span { font-size: 13px; color: var(--muted); display: block; margin: 3px 0 7px; }
+  .bld .bar { height: 6px; }
+  .bld.none { opacity: .55; }
+  .bld.complete { border-color: var(--done); background: var(--done-soft); }
+  .bld.complete span { color: var(--done); font-weight: 600; }
+
+  .entrance { margin-bottom: 12px; padding: 0; overflow: hidden; }
+  .entrance-head { padding: 13px 14px 12px; border-bottom: 1px solid var(--line); }
+  .entrance-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
+  .entrance-title h2 { font-size: 17px; margin: 0; }
+  .entrance-title h2 small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .entrance-title span { font-size: 13px; color: var(--muted); }
+  .entrance.complete .entrance-head { background: var(--done-soft); }
+  .entrance.complete .entrance-title span { color: var(--done); font-weight: 700; }
+
+  .unit {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 10px 11px 14px; border-bottom: 1px solid var(--line);
+  }
+  .unit:last-child { border-bottom: 0; }
+  .unit .check {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid var(--line); background: transparent;
+    display: grid; place-items: center; font-size: 16px; color: transparent; padding: 0;
+  }
+  .unit .body { flex: 1; min-width: 0; cursor: pointer; }
+  .unit .no { font-size: 18px; font-weight: 700; }
+  .unit .papers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .unit .papers .tag { font-size: 13px; padding: 3px 9px; }
+  .unit .memo { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .unit .edit { flex: none; border: 0; background: transparent; color: var(--muted); padding: 8px; font-size: 17px; }
+  .unit.done .check { background: var(--done); border-color: var(--done); color: #fff; }
+  .unit.done .no, .unit.done .papers { opacity: .45; }
+  .unit.done .no { text-decoration: line-through; }
+  .unit.off .no { color: var(--muted); }
+  .unit.off .check { visibility: hidden; }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .toolbar .grow { flex: 1; }
+  .btn {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 10px; padding: 9px 13px; font-size: 14px;
+  }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn.danger { color: var(--danger); }
+  .btn.small { padding: 6px 10px; font-size: 13px; }
+  .switch { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .switch input { width: 18px; height: 18px; }
+
+  .fab {
+    position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+    background: var(--primary); color: #fff; border: 0;
+    border-radius: 99px; padding: 14px 20px; font-size: 16px; font-weight: 700;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+  }
+
+  /* modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--card); width: 100%; max-width: 560px; max-height: 92vh; overflow: auto;
+    border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 600px) { .modal-bg { align-items: center; } .modal { border-radius: 18px; } }
+  .modal h3 { margin: 0 0 14px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .input {
+    width: 100%; border: 1px solid var(--line); background: var(--bg);
+    border-radius: 10px; padding: 10px 12px; font-size: 16px;
+  }
+  textarea.input { min-height: 140px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .paper-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+  .paper-row .top { display: flex; gap: 6px; margin-bottom: 8px; }
+  .paper-row .top .input { flex: 1; }
+  .daychips { display: grid; grid-template-columns: repeat(7, 1fr) auto; gap: 4px; }
+  .daychip {
+    border: 1px solid var(--line); background: var(--card); border-radius: 8px;
+    padding: 7px 0; font-size: 14px;
+  }
+  .daychip.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  .daychip.quick { padding: 7px 8px; font-size: 12px; color: var(--muted); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions .grow { flex: 1; }
+  .hint { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 6px 0 0; }
+  .menu-list { display: grid; gap: 8px; }
+  .menu-list .btn { text-align: left; padding: 12px 14px; font-size: 15px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60;
+  }
+  .toast.show { opacity: .95; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="topbar">
+    <button class="icon-btn" id="backBtn" hidden aria-label="뒤로">←</button>
+    <h1 id="title">신문 배달</h1>
+    <button class="icon-btn" id="menuBtn" aria-label="설정">⚙︎</button>
+  </div>
+  <div class="days" id="days"></div>
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="progLabel">전체 진행률</span><strong id="progText">0 / 0</strong></div>
+    <div class="bar" id="progBar"><i></i></div>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<button class="fab" id="fab" hidden>+ 호수 추가</button>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<datalist id="paperNames"></datalist>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 상수 ----------
+  const BUILDINGS = Array.from({ length: 15 }, (_, i) => String(401 + i)); // 401 ~ 415
+  const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];            // 월 ~ 일 (Date.getDay 값)
+  const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+  const ENTRANCES = [
+    { no: 1, label: '1·2호 라인' },
+    { no: 2, label: '3·4호 라인' },
+    { no: 3, label: '5·6호 라인' },
+  ];
+  const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
+    '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
+  const KEY_DATA = 'paperDelivery.data.v1';
+  const KEY_PROG = 'paperDelivery.progress.v1';
+  const KEY_UI = 'paperDelivery.ui.v1';
+
+  // ---------- 저장소 ----------
+  const store = {
+    get(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+      catch { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); }
+      catch { toast('저장 실패: 브라우저 저장공간을 확인하세요'); }
+    },
+  };
+
+  let data = store.get(KEY_DATA, { households: [] });
+  if (!Array.isArray(data.households)) data = { households: [] };
+  let progress = store.get(KEY_PROG, {});          // { 'YYYY-MM-DD': { householdId: true } }
+  let ui = Object.assign({ showOff: false, sortDesc: false }, store.get(KEY_UI, {}));
+
+  const saveData = () => store.set(KEY_DATA, data);
+  const saveProg = () => store.set(KEY_PROG, progress);
+  const saveUi = () => store.set(KEY_UI, { showOff: ui.showOff, sortDesc: ui.sortDesc });
+
+  // ---------- 날짜 ----------
+  const pad = n => String(n).padStart(2, '0');
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  // 선택한 요일 → 오늘 또는 다가오는 그 요일의 날짜
+  function dateForWeekday(wd) {
+    const t = today();
+    const d = new Date(t);
+    d.setDate(t.getDate() + ((wd - t.getDay() + 7) % 7));
+    return d;
+  }
+  // 지난 날짜 진행 기록 정리
+  (function pruneProgress() {
+    const t = ymd(today());
+    let changed = false;
+    for (const k of Object.keys(progress)) if (k < t) { delete progress[k]; changed = true; }
+    if (changed) saveProg();
+  })();
+
+  let selDay = today().getDay();
+  const selDateKey = () => ymd(dateForWeekday(selDay));
+  const doneMap = () => progress[selDateKey()] || {};
+  const isDone = h => !!doneMap()[h.id];
+
+  // ---------- 유틸 ----------
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  let toastTimer;
+  function toast(msg) {
+    const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  // 호수 "1203" → { floor: 12, line: 3 }
+  function parseUnit(u) {
+    const s = String(u).replace(/[^0-9]/g, '');
+    if (s.length < 3) return null;
+    const line = parseInt(s.slice(-2), 10);
+    const floor = parseInt(s.slice(0, -2), 10);
+    if (!floor || line < 1 || line > 6) return null;
+    return { floor, line, entrance: Math.ceil(line / 2), unit: String(floor) + pad(line) };
+  }
+
+  // 해당 요일에 받는 신문 목록
+  const papersOn = (h, wd) => h.papers.filter(p => p.days.includes(wd)).map(p => p.name);
+  const householdsOf = b => data.households.filter(h => h.building === b);
+  const activeOn = (list, wd) => list.filter(h => papersOn(h, wd).length > 0);
+
+  function countPapers(list, wd) {
+    const map = new Map();
+    for (const h of list) for (const n of papersOn(h, wd)) map.set(n, (map.get(n) || 0) + 1);
+    return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
+  }
+  function totalsHtml(list, wd) {
+    const entries = countPapers(list, wd);
+    if (!entries.length) return '<span class="empty-note">배달할 신문 없음</span>';
+    return entries.map(([n, c]) => `<span class="tag">${esc(n)} <em>${c}</em></span>`).join('');
+  }
+  function sortUnits(list) {
+    return list.slice().sort((a, b) => {
+      const pa = parseUnit(a.unit), pb = parseUnit(b.unit);
+      const f = (pa.floor - pb.floor) * (ui.sortDesc ? -1 : 1);
+      return f || pa.line - pb.line;
+    });
+  }
+  function allPaperNames() {
+    const set = new Set(DEFAULT_PAPERS);
+    data.households.forEach(h => h.papers.forEach(p => set.add(p.name)));
+    return [...set];
+  }
+
+  // ---------- 라우팅 ----------
+  const currentBuilding = () => {
+    const m = location.hash.match(/^#\/(\d{3})$/);
+    return m && BUILDINGS.includes(m[1]) ? m[1] : null;
+  };
+  window.addEventListener('hashchange', render);
+
+  // ---------- 렌더링 ----------
+  function renderDays() {
+    const t = today().getDay();
+    $('#days').innerHTML = DAY_ORDER.map(wd => {
+      const d = dateForWeekday(wd);
+      const cls = ['day', wd === selDay && 'active', wd === t && 'today', wd === 0 && 'sun'].filter(Boolean).join(' ');
+      return `<button class="${cls}" data-day="${wd}"><b>${DAY_NAMES[wd]}</b><small>${d.getMonth() + 1}/${d.getDate()}</small></button>`;
+    }).join('');
+  }
+
+  function renderProgress(b) {
+    const list = activeOn(b ? householdsOf(b) : data.households, selDay);
+    const done = list.filter(isDone).length;
+    const pct = list.length ? Math.round(done / list.length * 100) : 0;
+    const d = dateForWeekday(selDay);
+    const scope = b ? `${b}동 진행률` : '전체 진행률';
+    $('#progLabel').textContent = `${scope} · ${d.getMonth() + 1}/${d.getDate()}(${DAY_NAMES[selDay]})`;
+    $('#progText').textContent = list.length ? `${done} / ${list.length}집 (${pct}%)` : '배달 없음';
+    $('#progBar').firstElementChild.style.width = pct + '%';
+    $('#progBar').classList.toggle('complete', list.length > 0 && done === list.length);
+  }
+
+  function renderHome() {
+    const active = activeOn(data.households, selDay);
+    let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
+      <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
+      <div class="section-title">동 선택</div><div class="buildings">`;
+    for (const b of BUILDINGS) {
+      const list = activeOn(householdsOf(b), selDay);
+      const done = list.filter(isDone).length;
+      const pct = list.length ? done / list.length * 100 : 0;
+      const complete = list.length && done === list.length;
+      const status = !list.length ? '배달 없음' : complete ? '완료 ✓' : `${done} / ${list.length}집`;
+      html += `<button class="bld ${!list.length ? 'none' : ''} ${complete ? 'complete' : ''}" data-bld="${b}">
+        <b>${b}동</b><span>${status}</span>
+        <div class="bar ${complete ? 'complete' : ''}"><i style="width:${pct}%"></i></div></button>`;
+    }
+    html += '</div>';
+    if (!data.households.length) {
+      html += `<p class="hint" style="margin-top:16px">아직 등록된 집이 없어요. 동을 눌러 <b>+ 호수 추가</b>로 등록하거나,
+        ⚙︎ 설정의 <b>한꺼번에 입력</b>으로 여러 집을 한 번에 넣을 수 있어요.</p>`;
+    }
+    $('#main').innerHTML = html;
+  }
+
+  function unitHtml(h) {
+    const papers = papersOn(h, selDay);
+    const off = papers.length === 0;
+    const done = !off && isDone(h);
+    const tags = off
+      ? '<span class="tag plain">이 요일 배달 없음</span>'
+      : papers.map(n => `<span class="tag">${esc(n)}</span>`).join('');
+    return `<div class="unit ${done ? 'done' : ''} ${off ? 'off' : ''}" data-id="${h.id}">
+      <button class="check" data-act="toggle" aria-label="배달 완료">✓</button>
+      <div class="body" data-act="toggle">
+        <div class="no">${esc(h.unit)}호</div>
+        <div class="papers">${tags}</div>
+        ${h.memo ? `<div class="memo">📝 ${esc(h.memo)}</div>` : ''}
+      </div>
+      <button class="edit" data-act="edit" aria-label="수정">✎</button>
+    </div>`;
+  }
+
+  function renderBuilding(b) {
+    const all = householdsOf(b);
+    let html = `<div class="toolbar">
+      <label class="switch"><input type="checkbox" id="showOff" ${ui.showOff ? 'checked' : ''}> 배달 없는 집도 보기</label>
+      <span class="grow"></span>
+      <button class="btn small" id="sortBtn">${ui.sortDesc ? '높은 층부터 ↓' : '낮은 층부터 ↑'}</button>
+    </div>`;
+    for (const e of ENTRANCES) {
+      const inE = all.filter(h => parseUnit(h.unit)?.entrance === e.no);
+      const active = activeOn(inE, selDay);
+      const done = active.filter(isDone).length;
+      const complete = active.length && done === active.length;
+      const shown = sortUnits(ui.showOff ? inE : active);
+      html += `<div class="card entrance ${complete ? 'complete' : ''}">
+        <div class="entrance-head">
+          <div class="entrance-title">
+            <h2>${e.no}번 입구<small>${e.label}</small></h2>
+            <span>${active.length ? (complete ? '완료 ✓' : `${done} / ${active.length}집`) : ''}</span>
+          </div>
+          <div class="totals">${totalsHtml(active, selDay)}</div>
+        </div>
+        ${shown.map(unitHtml).join('') || ''}
+      </div>`;
+    }
+    if (all.length) {
+      html += `<div style="text-align:center;margin-top:6px">
+        <button class="btn small" id="resetBldBtn">이 동 체크 초기화</button></div>`;
+    }
+    $('#main').innerHTML = html;
+  }
+
+  function render() {
+    const b = currentBuilding();
+    $('#title').textContent = b ? `${b}동` : '신문 배달';
+    $('#backBtn').hidden = !b;
+    $('#fab').hidden = !b;
+    renderDays();
+    renderProgress(b);
+    b ? renderBuilding(b) : renderHome();
+    $('#paperNames').innerHTML = allPaperNames().map(n => `<option value="${esc(n)}">`).join('');
+  }
+
+  // ---------- 이벤트 ----------
+  $('#days').addEventListener('click', e => {
+    const btn = e.target.closest('[data-day]');
+    if (!btn) return;
+    selDay = Number(btn.dataset.day);
+    render();
+  });
+  $('#backBtn').addEventListener('click', () => {
+    if (history.length > 1 && currentBuilding()) history.back(); else location.hash = '';
+  });
+  $('#fab').addEventListener('click', () => openEditor(null, currentBuilding()));
+  $('#menuBtn').addEventListener('click', openMenu);
+
+  $('#main').addEventListener('click', e => {
+    const bld = e.target.closest('[data-bld]');
+    if (bld) { location.hash = '#/' + bld.dataset.bld; window.scrollTo(0, 0); return; }
+
+    if (e.target.id === 'sortBtn') { ui.sortDesc = !ui.sortDesc; saveUi(); render(); return; }
+    if (e.target.id === 'resetBldBtn') {
+      const b = currentBuilding();
+      if (!confirm(`${b}동의 ${DAY_NAMES[selDay]}요일 체크를 모두 지울까요?`)) return;
+      const map = progress[selDateKey()] || {};
+      householdsOf(b).forEach(h => delete map[h.id]);
+      saveProg(); render(); return;
+    }
+
+    const actEl = e.target.closest('[data-act]');
+    const unitEl = e.target.closest('.unit');
+    if (!actEl || !unitEl) return;
+    const h = data.households.find(x => x.id === unitEl.dataset.id);
+    if (!h) return;
+    if (actEl.dataset.act === 'edit') { openEditor(h); return; }
+    if (actEl.dataset.act === 'toggle') {
+      if (!papersOn(h, selDay).length) { openEditor(h); return; }
+      const key = selDateKey();
+      const map = progress[key] || (progress[key] = {});
+      if (map[h.id]) delete map[h.id]; else map[h.id] = true;
+      saveProg();
+      if (navigator.vibrate) navigator.vibrate(15);
+      render();
+    }
+  });
+  $('#main').addEventListener('change', e => {
+    if (e.target.id === 'showOff') { ui.showOff = e.target.checked; saveUi(); render(); }
+  });
+
+  // ---------- 모달 ----------
+  const modalBg = $('#modalBg'), modal = $('#modal');
+  function openModal(html) { modal.innerHTML = html; modalBg.classList.add('open'); }
+  function closeModal() { modalBg.classList.remove('open'); modal.innerHTML = ''; }
+  modalBg.addEventListener('click', e => { if (e.target === modalBg) closeModal(); });
+
+  // 집 추가/수정
+  function openEditor(h, building) {
+    const isNew = !h;
+    const draft = h
+      ? { building: h.building, unit: h.unit, memo: h.memo || '', papers: h.papers.map(p => ({ name: p.name, days: p.days.slice() })) }
+      : { building: building || BUILDINGS[0], unit: '', memo: '', papers: [{ name: '', days: [1, 2, 3, 4, 5, 6] }] };
+
+    function paperRows() {
+      return draft.papers.map((p, i) => `
+        <div class="paper-row" data-i="${i}">
+          <div class="top">
+            <input class="input" list="paperNames" placeholder="신문 이름 (예: 조선일보)" value="${esc(p.name)}" data-f="name">
+            <button class="btn danger small" data-pact="remove" aria-label="삭제">✕</button>
+          </div>
+          <div class="daychips">
+            ${DAY_ORDER.map(wd => `<button class="daychip ${p.days.includes(wd) ? 'on' : ''}" data-pact="day" data-wd="${wd}">${DAY_NAMES[wd]}</button>`).join('')}
+            <button class="daychip quick" data-pact="weekdays">월~토</button>
+          </div>
+        </div>`).join('');
+    }
+
+    openModal(`
+      <h3>${isNew ? '호수 추가' : `${esc(h.building)}동 ${esc(h.unit)}호 수정`}</h3>
+      <div class="row2">
+        <div class="field"><label>동</label>
+          <select class="input" id="edBld">${BUILDINGS.map(b => `<option ${b === draft.building ? 'selected' : ''}>${b}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>호수</label>
+          <input class="input" id="edUnit" inputmode="numeric" placeholder="예: 1203" value="${esc(draft.unit)}">
+        </div>
+      </div>
+      <div class="field"><label>신문 / 배달 요일</label>
+        <div id="edPapers">${paperRows()}</div>
+        <button class="btn small" id="edAddPaper">+ 신문 추가</button>
+      </div>
+      <div class="field"><label>메모 (선택)</label>
+        <input class="input" id="edMemo" placeholder="예: 문 앞 말고 우유함에" value="${esc(draft.memo)}">
+      </div>
+      <div class="modal-actions">
+        ${isNew ? '' : '<button class="btn danger" id="edDelete">삭제</button>'}
+        <span class="grow"></span>
+        <button class="btn" id="edCancel">취소</button>
+        <button class="btn primary" id="edSave">저장</button>
+      </div>`);
+
+    const papersEl = $('#edPapers');
+    papersEl.addEventListener('input', e => {
+      const row = e.target.closest('.paper-row');
+      if (row && e.target.dataset.f === 'name') draft.papers[row.dataset.i].name = e.target.value;
+    });
+    papersEl.addEventListener('click', e => {
+      const btn = e.target.closest('[data-pact]');
+      if (!btn) return;
+      const p = draft.papers[btn.closest('.paper-row').dataset.i];
+      if (btn.dataset.pact === 'remove') draft.papers.splice(draft.papers.indexOf(p), 1);
+      if (btn.dataset.pact === 'day') {
+        const wd = Number(btn.dataset.wd);
+        p.days = p.days.includes(wd) ? p.days.filter(d => d !== wd) : [...p.days, wd];
+      }
+      if (btn.dataset.pact === 'weekdays') p.days = [1, 2, 3, 4, 5, 6];
+      papersEl.innerHTML = paperRows();
+    });
+    $('#edAddPaper').addEventListener('click', () => {
+      draft.papers.push({ name: '', days: [1, 2, 3, 4, 5, 6] });
+      papersEl.innerHTML = paperRows();
+      papersEl.querySelector('.paper-row:last-child input').focus();
+    });
+    $('#edCancel').addEventListener('click', closeModal);
+    if (!isNew) $('#edDelete').addEventListener('click', () => {
+      if (!confirm(`${h.building}동 ${h.unit}호를 삭제할까요?`)) return;
+      data.households = data.households.filter(x => x !== h);
+      saveData(); closeModal(); render(); toast('삭제했어요');
+    });
+    $('#edSave').addEventListener('click', () => {
+      const b = $('#edBld').value;
+      const pu = parseUnit($('#edUnit').value);
+      if (!pu) { toast('호수를 확인하세요 (예: 1203, 끝 두 자리는 01~06)'); return; }
+      const papers = draft.papers
+        .map(p => ({ name: p.name.trim(), days: DAY_ORDER.filter(d => p.days.includes(d)) }))
+        .filter(p => p.name);
+      if (!papers.length) { toast('신문을 하나 이상 입력하세요'); return; }
+      if (papers.some(p => !p.days.length)) { toast('배달 요일을 선택하지 않은 신문이 있어요'); return; }
+      const dup = data.households.find(x => x !== h && x.building === b && x.unit === pu.unit);
+      if (dup) { toast(`${b}동 ${pu.unit}호는 이미 있어요`); return; }
+      const rec = h || { id: uid() };
+      Object.assign(rec, { building: b, unit: pu.unit, papers, memo: $('#edMemo').value.trim() });
+      if (isNew) data.households.push(rec);
+      saveData(); closeModal();
+      if (isNew && currentBuilding() !== b) location.hash = '#/' + b; else render();
+      toast(isNew ? '추가했어요' : '저장했어요');
+    });
+    if (isNew) setTimeout(() => $('#edUnit').focus(), 50);
+  }
+
+  // 설정 메뉴
+  function openMenu() {
+    openModal(`
+      <h3>설정</h3>
+      <div class="menu-list">
+        <button class="btn" id="mBulk">📋 한꺼번에 입력</button>
+        <button class="btn" id="mResetDay">↺ ${DAY_NAMES[selDay]}요일 체크 전체 초기화</button>
+        <button class="btn" id="mExport">⬇︎ 백업 파일 저장</button>
+        <button class="btn" id="mImport">⬆︎ 백업 파일 불러오기</button>
+        <button class="btn danger" id="mWipe">🗑 모든 데이터 삭제</button>
+      </div>
+      <p class="hint">등록된 집: ${data.households.length}곳 · 데이터는 이 기기 브라우저에만 저장돼요. 가끔 백업 파일을 저장해 두세요.</p>
+      <div class="modal-actions"><span class="grow"></span><button class="btn" id="mClose">닫기</button></div>
+      <input type="file" id="mFile" accept="application/json,.json" hidden>`);
+    $('#mClose').addEventListener('click', closeModal);
+    $('#mBulk').addEventListener('click', openBulk);
+    $('#mResetDay').addEventListener('click', () => {
+      if (!confirm(`${DAY_NAMES[selDay]}요일 체크를 모두 지울까요?`)) return;
+      delete progress[selDateKey()]; saveProg(); closeModal(); render(); toast('초기화했어요');
+    });
+    $('#mExport').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `신문배달_백업_${ymd(new Date())}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    $('#mImport').addEventListener('click', () => $('#mFile').click());
+    $('#mFile').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const parsed = JSON.parse(await f.text());
+        if (!Array.isArray(parsed.households)) throw new Error();
+        if (!confirm(`${parsed.households.length}곳을 불러옵니다. 현재 데이터는 덮어씌워져요. 계속할까요?`)) return;
+        data = { households: parsed.households };
+        saveData(); closeModal(); render(); toast('불러왔어요');
+      } catch { toast('올바른 백업 파일이 아니에요'); }
+    });
+    $('#mWipe').addEventListener('click', () => {
+      if (!confirm('모든 집 정보와 체크 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
+      data = { households: [] }; progress = {};
+      saveData(); saveProg(); closeModal(); location.hash = ''; render();
+    });
+  }
+
+  // 한꺼번에 입력: "401 1203 조선일보, 어린이조선:토"
+  function parseDays(s) {
+    if (!s) return [1, 2, 3, 4, 5, 6];
+    s = s.trim();
+    if (s === '매일') return [0, 1, 2, 3, 4, 5, 6];
+    if (s === '평일') return [1, 2, 3, 4, 5];
+    const range = s.match(/^([일월화수목금토])\s*[~-]\s*([일월화수목금토])$/);
+    if (range) {
+      const a = DAY_ORDER.indexOf(DAY_NAMES.indexOf(range[1]));
+      const b = DAY_ORDER.indexOf(DAY_NAMES.indexOf(range[2]));
+      return a <= b ? DAY_ORDER.slice(a, b + 1) : null;
+    }
+    const days = [...s].filter(c => DAY_NAMES.includes(c)).map(c => DAY_NAMES.indexOf(c));
+    return days.length ? DAY_ORDER.filter(d => days.includes(d)) : null;
+  }
+
+  function openBulk() {
+    openModal(`
+      <h3>한꺼번에 입력</h3>
+      <div class="field">
+        <textarea class="input" id="bkText" placeholder="401 1203 조선일보
+401 1204 중앙일보, 어린이조선:토
+402 501 조선일보:월수금, 매일경제:평일"></textarea>
+        <p class="hint">
+          한 줄에 한 집: <b>동 호수 신문[:요일], 신문[:요일]</b><br>
+          · 요일을 안 쓰면 <b>월~토</b>로 등록돼요<br>
+          · 요일 예시: <code>토</code>, <code>월수금</code>, <code>평일</code>, <code>매일</code>, <code>월~금</code><br>
+          · 이미 있는 집이면 신문이 추가돼요
+        </p>
+      </div>
+      <div class="modal-actions"><span class="grow"></span>
+        <button class="btn" id="bkCancel">취소</button>
+        <button class="btn primary" id="bkSave">등록</button>
+      </div>`);
+    $('#bkCancel').addEventListener('click', closeModal);
+    $('#bkSave').addEventListener('click', () => {
+      const lines = $('#bkText').value.split('\n').map(l => l.trim()).filter(Boolean);
+      const errors = [];
+      let added = 0, updated = 0;
+      const pending = [];
+      lines.forEach((line, idx) => {
+        const m = line.match(/^(\d{3})\s*동?\s+(\d{3,4})\s*호?\s+(.+)$/);
+        const pu = m && parseUnit(m[2]);
+        if (!m || !BUILDINGS.includes(m[1]) || !pu) { errors.push(idx + 1); return; }
+        const papers = [];
+        for (const part of m[3].split(/[,，]/)) {
+          const [name, dayStr] = part.split(/[:：]/);
+          if (!name.trim()) continue;
+          const days = parseDays(dayStr);
+          if (!days) { errors.push(idx + 1); return; }
+          papers.push({ name: name.trim(), days });
+        }
+        if (!papers.length) { errors.push(idx + 1); return; }
+        pending.push({ building: m[1], unit: pu.unit, papers });
+      });
+      if (errors.length) { toast(`${errors.join(', ')}번째 줄 형식을 확인하세요`); return; }
+      for (const p of pending) {
+        const ex = data.households.find(h => h.building === p.building && h.unit === p.unit);
+        if (ex) {
+          for (const np of p.papers) {
+            const same = ex.papers.find(x => x.name === np.name);
+            if (same) same.days = DAY_ORDER.filter(d => same.days.includes(d) || np.days.includes(d));
+            else ex.papers.push(np);
+          }
+          updated++;
+        } else {
+          data.households.push({ id: uid(), memo: '', ...p });
+          added++;
+        }
+      }
+      saveData(); closeModal(); render();
+      toast(`추가 ${added}곳 · 수정 ${updated}곳`);
+    });
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
