@@ -292,13 +292,13 @@
     '이코노미': 14, '경향': 14, '세계': 14, '영자': 15, '서울': 15, '국민': 15, '한국': 15,
   };
   const PALETTE_SIZE = 16;
-  // 신문별 기본 배달 요일 (없으면 월~토). 소중·한자는 화요일만
-  const PAPER_DAYS_DEFAULT = { '소중': [2], '한자': [2] };
+  // 신문별 기본 배달 요일 (없으면 월~토). 소중·한자·이코노미는 화요일만
+  const PAPER_DAYS_DEFAULT = { '소중': [2], '한자': [2], '이코노미': [2] };
   const WEEK = [1, 2, 3, 4, 5, 6];
   const defaultDays = name => (PAPER_DAYS_DEFAULT[name] || WEEK).slice();
 
   // 기본 명단: "동-호수 신문 신문 ... | 메모" (메모에 '휴독'이 있으면 휴독 처리)
-  const SEED_VERSION = 1;
+  const SEED_VERSION = 2;
   const SEED_TEXT = `401-1302 중앙 머니 소중
 401-1702 조선 어조
 401-2401 중앙 머니 소중
@@ -513,6 +513,11 @@
   if (!data || !Array.isArray(data.households)) {
     // 처음 열면 기본 명단으로 시작
     data = { households: seedHouseholds(), seedVersion: SEED_VERSION };
+    try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
+  } else if ((data.seedVersion || 0) < 2) {
+    // v2: 이코노미는 화요일만
+    data.households.forEach(h => h.papers.forEach(p => { if (p.name === '이코노미') p.days = [2]; }));
+    data.seedVersion = 2;
     try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
   }
   let progress = store.get(KEY_PROG, {});          // { 'YYYY-MM-DD': { householdId: true } }
