@@ -101,18 +101,23 @@
   .tag.plain { background: var(--chip); color: var(--text); font-weight: 500; }
   /* 신문별 색: 진한 바탕 + 흰 글씨 (밖에서도 잘 보이게) */
   .tag[class*=" p"] { color: #fff; }
-  .p0 { background: #1d4ed8; }   /* 조선일보 - 파랑 */
-  .p1 { background: #ea580c; }   /* 중앙일보 - 주황 */
-  .p2 { background: #15803d; }   /* 동아일보 - 초록 */
-  .p3 { background: #7c3aed; }   /* 매일경제 - 보라 */
-  .p4 { background: #0e7490; }   /* 한국경제 - 청록 */
-  .p5 { background: #db2777; }   /* 한겨레 - 분홍 */
-  .p6 { background: #a16207; }   /* 경향신문 - 황토 */
-  .p7 { background: #dc2626; }   /* 어린이조선 - 빨강 */
-  .p8 { background: #475569; }   /* 한국일보 - 회색 */
-  .p9 { background: #65a30d; }   /* 어린이동아 - 연두 */
-  .p10 { background: #4338ca; }  /* 서울경제 - 남색 */
-  .p11 { background: #9f1239; }  /* 소년한국 - 자주 */
+  .p0 { background: #1d4ed8; }   /* 조선 - 파랑 */
+  .p1 { background: #ea580c; }   /* 중앙 - 주황 */
+  .p2 { background: #15803d; }   /* 동아 - 초록 */
+  .p3 { background: #7c3aed; }   /* 매경 - 보라 */
+  .p4 { background: #0e7490; }   /* 한경 - 청록 */
+  .p5 { background: #db2777; }   /* 파이 - 분홍 */
+  .p6 { background: #a16207; }   /* 머니 - 황토 */
+  .p7 { background: #dc2626; }   /* 소중 - 빨강 */
+  .p8 { background: #475569; }   /* 데일리 - 회색 */
+  .p9 { background: #65a30d; }   /* 어동 - 연두 */
+  .p10 { background: #4338ca; }  /* 서경 - 남색 */
+  .p11 { background: #9f1239; }  /* 한자 - 자주 */
+  .p12 { background: #0284c7; }  /* 어조 - 하늘 */
+  .p13 { background: #a21caf; }  /* 한겨레 - 자홍 */
+  .p14 { background: #78350f; }  /* 이코노미·경향·세계 - 갈색 */
+  .p15 { background: #111827; }  /* 영자·서울·국민·한국 - 검정 */
+  .tag.p15 { box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
   .empty-note { color: var(--muted); font-size: 14px; }
 
 
@@ -280,12 +285,205 @@
   ];
   const STOPS = ROUTE.flatMap(([b, ns]) => ns.map(no => ({ b, no })));
 
-  // 신문별 색 (색 번호는 아래 CSS의 .p0 ~ .p11). 목록에 없는 신문은 이름으로 자동 배정
+  // 신문별 색 (색 번호는 아래 CSS의 .p0 ~ .p15). 목록에 없는 신문은 이름으로 자동 배정
   const PAPER_COLORS = {
-    '조선일보': 0, '중앙일보': 1, '동아일보': 2, '매일경제': 3, '한국경제': 4, '한겨레': 5,
-    '경향신문': 6, '어린이조선': 7, '한국일보': 8, '어린이동아': 9, '서울경제': 10, '소년한국': 11,
+    '조선': 0, '중앙': 1, '동아': 2, '매경': 3, '한경': 4, '파이': 5, '머니': 6, '소중': 7,
+    '데일리': 8, '어동': 9, '서경': 10, '한자': 11, '어조': 12, '한겨레': 13,
+    '이코노미': 14, '경향': 14, '세계': 14, '영자': 15, '서울': 15, '국민': 15, '한국': 15,
   };
-  const PALETTE_SIZE = 12;
+  const PALETTE_SIZE = 16;
+  // 신문별 기본 배달 요일 (없으면 월~토). 소중·한자는 화요일만
+  const PAPER_DAYS_DEFAULT = { '소중': [2], '한자': [2] };
+  const WEEK = [1, 2, 3, 4, 5, 6];
+  const defaultDays = name => (PAPER_DAYS_DEFAULT[name] || WEEK).slice();
+
+  // 기본 명단: "동-호수 신문 신문 ... | 메모" (메모에 '휴독'이 있으면 휴독 처리)
+  const SEED_VERSION = 1;
+  const SEED_TEXT = `401-1302 중앙 머니 소중
+401-1702 조선 어조
+401-2401 중앙 머니 소중
+401-704 한경
+401-1204 중앙 머니
+401-1403 동아 서경
+401-1804 중앙 소중
+401-2903 조선
+401-705 조선 어조
+401-2105 매경
+401-2106 어조
+401-2505 중앙 머니
+402-701 조선 어조
+402-2101 중앙 머니
+402-2702 조선 한자
+402-704 조선
+402-803 조선
+402-1903 중앙 머니
+402-2004 조선
+402-2104 조선 한경 매경
+402-205 동아 어동
+402-1205 중앙
+402-1505 중앙 파이
+402-1506 조선
+402-2005 조선
+402-2105 조선 한자
+402-2405 중앙
+402-2606 중앙
+403-1901 중앙 머니
+403-2001 동아
+403-2101 중앙 데일리
+403-2501 영자
+403-2601 중앙 파이 서울
+403-2801 동아
+403-1203 중앙 데일리 소중
+403-1303 중앙 데일리
+403-1504 조선
+403-1703 동아 서경
+403-1704 중앙 머니
+403-2604 동아 서경
+403-2804 어조
+403-506 조선
+403-705 매경 이코노미
+403-805 중앙 소중
+403-1506 조선
+403-2305 동아 | 박스
+403-2506 매경
+404-602 중앙 데일리
+404-701 중앙 머니
+404-802 조선
+404-901 중앙 머니 소중
+404-1301 조선
+404-1402 조선
+404-1602 조선 한자
+404-2301 중앙
+404-2701 한겨레
+404-3201 조선
+404-3401 동아 서경
+404-403 조선
+404-2304 조선 중앙
+404-2803 중앙 머니
+404-3004 조선 한자
+404-3103 중앙 머니
+404-3104 중앙
+405-402 중앙 파이
+405-1104 매경
+405-1402 중앙
+405-1503 조선 한자 | 의자위
+405-1602 중앙 파이
+405-1804 어조 동아 어동
+405-2302 중앙 머니
+405-2903 조선
+405-2904 한겨레
+405-3402 동아 서경
+406-901 동아 어동
+406-1202 매경
+406-1801 중앙 소중
+406-1901 한경
+406-2102 중앙 머니
+406-2302 한경 중앙
+406-2401 중앙 머니
+406-2802 조선
+406-503 동아
+406-804 조선
+406-1603 동아
+406-1604 조선
+406-1903 중앙 머니
+406-2304 중앙 머니
+406-2704 조선 | 휴독중
+406-2804 조선 한자
+406-3004 조선
+406-3303 중앙 데일리
+406-3403 어동
+406-3404 조선 한경
+407-302 중앙 데일리 소중
+407-502 조선 한경 중앙
+407-804 동아 서경
+407-1104 중앙 데일리 소중
+407-1101 국민
+407-1404 한경
+407-1602 조선 한경 한자
+407-1701 한겨레
+407-2303 조선 한자
+407-2402 매경
+407-2502 중앙 머니
+407-2601 동아
+407-2704 중앙
+407-3401 중앙
+407-3402 매경
+410-302 서울
+410-802 조선
+410-1201 조선 한경
+410-1801 동아
+410-103 중앙
+410-203 중앙 머니
+410-403 조선
+410-804 조선
+410-903 중앙 머니 | 휴독중
+410-1103 조선
+410-1203 동아 경향
+411-501 한경
+411-602 중앙 머니
+411-801 중앙
+411-902 매경
+411-1201 조선 한경
+411-1302 중앙
+411-1501 조선 한경
+411-1702 중앙 머니
+411-303 조선
+411-503 조선
+411-804 조선
+411-1104 조선 | 박스
+411-1204 조선 한경
+411-1303 중앙 파이
+411-1404 매경
+411-1604 동아
+412-401 조선
+412-501 조선
+412-602 조선
+412-801 동아
+412-1101 중앙 파이
+412-1802 중앙 머니
+413-101 어조
+413-401 매경
+413-601 매경
+413-602 중앙 | 자전거
+413-902 어조
+413-1002 동아 서경 | 박스
+413-1501 서경
+413-1801 조선 한경
+414-201 조선
+414-202 조선
+414-502 중앙
+414-701 조선
+414-702 조선 한경
+414-801 조선
+414-901 조선
+414-1102 조선
+414-1302 중앙 머니 소중
+414-1601 조선 한경
+414-1702 중앙 | 의자
+415-704 한경
+415-803 조선
+415-901 중앙
+415-1102 중앙 머니
+415-1703 세계
+415-1802 조선
+415-2203 동아
+415-2701 조선 한경
+415-2804 중앙 머니 소중
+415-2901 중앙
+415-3002 한국
+415-3104 한경`;
+  function seedHouseholds() {
+    return SEED_TEXT.split('\n').map((line, i) => {
+      const [main, memo = ''] = line.split('|').map(x => x.trim());
+      const [bu, ...names] = main.split(/\s+/);
+      const [building, unit] = bu.split('-');
+      return {
+        id: 'seed' + i, building, unit,
+        papers: names.map(name => ({ name, days: defaultDays(name) })),
+        memo, paused: memo.includes('휴독'),
+      };
+    });
+  }
   function paperColor(name) {
     if (name in PAPER_COLORS) return 'p' + PAPER_COLORS[name];
     let h = 0;
@@ -294,8 +492,7 @@
   }
   const paperTag = (name, count) =>
     `<span class="tag ${paperColor(name)}">${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
-  const DEFAULT_PAPERS = ['조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '한국일보',
-    '매일경제', '한국경제', '서울경제', '어린이조선', '어린이동아', '소년한국'];
+  const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   const KEY_DATA = 'paperDelivery.data.v1';
   const KEY_PROG = 'paperDelivery.progress.v1';
   const KEY_UI = 'paperDelivery.ui.v1';
@@ -312,8 +509,12 @@
     },
   };
 
-  let data = store.get(KEY_DATA, { households: [] });
-  if (!Array.isArray(data.households)) data = { households: [] };
+  let data = store.get(KEY_DATA, null);
+  if (!data || !Array.isArray(data.households)) {
+    // 처음 열면 기본 명단으로 시작
+    data = { households: seedHouseholds(), seedVersion: SEED_VERSION };
+    try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
+  }
   let progress = store.get(KEY_PROG, {});          // { 'YYYY-MM-DD': { householdId: true } }
   let ui = Object.assign({ showOff: false }, store.get(KEY_UI, {}));
 
@@ -366,7 +567,7 @@
   }
 
   // 해당 요일에 받는 신문 목록
-  const papersOn = (h, wd) => h.papers.filter(p => p.days.includes(wd)).map(p => p.name);
+  const papersOn = (h, wd) => h.paused ? [] : h.papers.filter(p => p.days.includes(wd)).map(p => p.name);
   const householdsOf = b => data.households.filter(h => h.building === b);
   const activeOn = (list, wd) => list.filter(h => papersOn(h, wd).length > 0);
 
@@ -430,8 +631,9 @@
     const papers = papersOn(h, selDay);
     const off = papers.length === 0;
     const done = !off && isDone(h);
-    const tags = off
-      ? '<span class="tag plain">이 요일 배달 없음</span>'
+    const tags = h.paused
+      ? '<span class="tag plain">휴독중</span>'
+      : off ? '<span class="tag plain">이 요일 배달 없음</span>'
       : papers.map(n => paperTag(n)).join('');
     return `<div class="unit ${done ? 'done' : ''} ${off ? 'off' : ''}" data-id="${h.id}">
       <button class="check" data-act="toggle" aria-label="배달 완료">✓</button>
@@ -542,8 +744,8 @@
   function openEditor(h, building) {
     const isNew = !h;
     const draft = h
-      ? { building: h.building, unit: h.unit, memo: h.memo || '', papers: h.papers.map(p => ({ name: p.name, days: p.days.slice() })) }
-      : { building: building || BUILDINGS[0], unit: '', memo: '', papers: [{ name: '', days: [1, 2, 3, 4, 5, 6] }] };
+      ? { building: h.building, unit: h.unit, memo: h.memo || '', paused: !!h.paused, papers: h.papers.map(p => ({ name: p.name, days: p.days.slice() })) }
+      : { building: building || BUILDINGS[0], unit: '', memo: '', paused: false, papers: [{ name: '', days: WEEK.slice() }] };
 
     function paperRows() {
       return draft.papers.map((p, i) => `
@@ -574,8 +776,9 @@
         <button class="btn small" id="edAddPaper">+ 신문 추가</button>
       </div>
       <div class="field"><label>메모 (선택)</label>
-        <input class="input" id="edMemo" placeholder="예: 문 앞 말고 우유함에" value="${esc(draft.memo)}">
+        <input class="input" id="edMemo" placeholder="예: 박스, 의자 위" value="${esc(draft.memo)}">
       </div>
+      <label class="switch" style="margin-bottom:6px"><input type="checkbox" id="edPaused" ${draft.paused ? 'checked' : ''}> 휴독중 (잠시 배달 안 함)</label>
       <div class="modal-actions">
         ${isNew ? '' : '<button class="btn danger" id="edDelete">삭제</button>'}
         <span class="grow"></span>
@@ -587,6 +790,14 @@
     papersEl.addEventListener('input', e => {
       const row = e.target.closest('.paper-row');
       if (row && e.target.dataset.f === 'name') draft.papers[row.dataset.i].name = e.target.value;
+    });
+    // 신문 이름을 고르면 그 신문의 기본 요일로 맞춤 (예: 소중 → 화)
+    papersEl.addEventListener('change', e => {
+      const row = e.target.closest('.paper-row');
+      if (!row || e.target.dataset.f !== 'name') return;
+      const p = draft.papers[row.dataset.i];
+      p.name = e.target.value.trim();
+      if (p.name) { p.days = defaultDays(p.name); papersEl.innerHTML = paperRows(); }
     });
     papersEl.addEventListener('click', e => {
       const btn = e.target.closest('[data-pact]');
@@ -623,7 +834,7 @@
       const dup = data.households.find(x => x !== h && x.building === b && x.unit === pu.unit);
       if (dup) { toast(`${b}동 ${pu.unit}호는 이미 있어요`); return; }
       const rec = h || { id: uid() };
-      Object.assign(rec, { building: b, unit: pu.unit, papers, memo: $('#edMemo').value.trim() });
+      Object.assign(rec, { building: b, unit: pu.unit, papers, memo: $('#edMemo').value.trim(), paused: $('#edPaused').checked });
       if (isNew) data.households.push(rec);
       saveData(); closeModal();
       render();
@@ -637,10 +848,12 @@
     openModal(`
       <h3>설정</h3>
       <div class="menu-list">
+        <button class="btn" id="mDays">📅 신문별 배달 요일</button>
         <button class="btn" id="mBulk">📋 한꺼번에 입력</button>
         <button class="btn" id="mResetDay">↺ ${DAY_NAMES[selDay]}요일 체크 전체 초기화</button>
         <button class="btn" id="mExport">⬇︎ 백업 파일 저장</button>
         <button class="btn" id="mImport">⬆︎ 백업 파일 불러오기</button>
+        <button class="btn" id="mSeed">↺ 기본 명단으로 되돌리기</button>
         <button class="btn danger" id="mWipe">🗑 모든 데이터 삭제</button>
       </div>
       <p class="hint">등록된 집: ${data.households.length}곳 · 데이터는 이 기기 브라우저에만 저장돼요. 가끔 백업 파일을 저장해 두세요.</p>
@@ -648,6 +861,7 @@
       <input type="file" id="mFile" accept="application/json,.json" hidden>`);
     $('#mClose').addEventListener('click', closeModal);
     $('#mBulk').addEventListener('click', openBulk);
+    $('#mDays').addEventListener('click', openPaperDays);
     $('#mResetDay').addEventListener('click', () => {
       if (!confirm(`${DAY_NAMES[selDay]}요일 체크를 모두 지울까요?`)) return;
       delete progress[selDateKey()]; saveProg(); closeModal(); render(); toast('초기화했어요');
@@ -671,10 +885,68 @@
         saveData(); closeModal(); render(); toast('불러왔어요');
       } catch { toast('올바른 백업 파일이 아니에요'); }
     });
+    $('#mSeed').addEventListener('click', () => {
+      if (!confirm('처음 받은 기본 명단으로 되돌릴까요? 직접 추가·수정한 내용은 사라져요.')) return;
+      data = { households: seedHouseholds(), seedVersion: SEED_VERSION };
+      saveData(); closeModal(); render(); toast('기본 명단으로 되돌렸어요');
+    });
     $('#mWipe').addEventListener('click', () => {
       if (!confirm('모든 집 정보와 체크 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
       data = { households: [] }; progress = {};
       saveData(); saveProg(); closeModal(); render();
+    });
+  }
+
+  // 신문별 배달 요일: 바꾸면 그 신문을 받는 모든 집에 적용
+  function openPaperDays() {
+    const names = new Map(); // 이름 → { count, days(가장 많이 쓰인 요일 조합) }
+    for (const h of data.households) for (const p of h.papers) {
+      const key = p.days.join(',');
+      const v = names.get(p.name) || { count: 0, combos: {} };
+      v.count++; v.combos[key] = (v.combos[key] || 0) + 1;
+      names.set(p.name, v);
+    }
+    const draft = [...names.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([name, v]) => {
+        const best = Object.entries(v.combos).sort((a, b) => b[1] - a[1])[0][0];
+        return { name, count: v.count, days: best ? best.split(',').map(Number) : [], orig: best };
+      });
+    const rows = () => draft.map((d, i) => `
+      <div class="paper-row" data-i="${i}">
+        <div class="top" style="align-items:center">${paperTag(d.name)}<span class="hint" style="margin:0 0 0 6px">${d.count}집</span></div>
+        <div class="daychips" style="grid-template-columns:repeat(7,1fr)">
+          ${DAY_ORDER.map(wd => `<button class="daychip ${d.days.includes(wd) ? 'on' : ''}" data-wd="${wd}">${DAY_NAMES[wd]}</button>`).join('')}
+        </div>
+      </div>`).join('');
+    openModal(`
+      <h3>신문별 배달 요일</h3>
+      <p class="hint" style="margin:-6px 0 12px">요일을 바꾸면 그 신문을 받는 모든 집에 한 번에 적용돼요.</p>
+      <div id="pdRows">${rows()}</div>
+      <div class="modal-actions"><span class="grow"></span>
+        <button class="btn" id="pdCancel">취소</button>
+        <button class="btn primary" id="pdSave">저장</button>
+      </div>`);
+    $('#pdRows').addEventListener('click', e => {
+      const btn = e.target.closest('[data-wd]');
+      if (!btn) return;
+      const d = draft[btn.closest('.paper-row').dataset.i];
+      const wd = Number(btn.dataset.wd);
+      d.days = d.days.includes(wd) ? d.days.filter(x => x !== wd) : [...d.days, wd];
+      $('#pdRows').innerHTML = rows();
+    });
+    $('#pdCancel').addEventListener('click', closeModal);
+    $('#pdSave').addEventListener('click', () => {
+      if (draft.some(d => !d.days.length)) { toast('요일을 하나 이상 골라주세요'); return; }
+      let changed = 0;
+      for (const d of draft) {
+        const days = DAY_ORDER.filter(x => d.days.includes(x));
+        if (days.join(',') === d.orig) continue;
+        for (const h of data.households) for (const p of h.papers) if (p.name === d.name) p.days = days.slice();
+        changed++;
+      }
+      saveData(); closeModal(); render();
+      toast(changed ? `${changed}개 신문 요일을 바꿨어요` : '바뀐 내용이 없어요');
     });
   }
 
@@ -703,7 +975,7 @@
 402 501 조선일보:월수금, 매일경제:평일"></textarea>
         <p class="hint">
           한 줄에 한 집: <b>동 호수 신문[:요일], 신문[:요일]</b><br>
-          · 요일을 안 쓰면 <b>월~토</b>로 등록돼요<br>
+          · 요일을 안 쓰면 <b>월~토</b>로 등록돼요 (소중·한자는 화요일)<br>
           · 요일 예시: <code>토</code>, <code>월수금</code>, <code>평일</code>, <code>매일</code>, <code>월~금</code><br>
           · 이미 있는 집이면 신문이 추가돼요
         </p>
@@ -726,7 +998,7 @@
         for (const part of m[3].split(/[,，]/)) {
           const [name, dayStr] = part.split(/[:：]/);
           if (!name.trim()) continue;
-          const days = parseDays(dayStr);
+          const days = dayStr ? parseDays(dayStr) : defaultDays(name.trim());
           if (!days) { errors.push(idx + 1); return; }
           papers.push({ name: name.trim(), days });
         }
