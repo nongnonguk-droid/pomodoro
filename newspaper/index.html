@@ -98,6 +98,12 @@
     border-radius: 99px; padding: 5px 11px; font-size: 14px; font-weight: 600;
   }
   .tag em { font-style: normal; font-weight: 800; }
+  /* 그날 1부뿐인 신문: 노란 테두리 + ★ */
+  .tag.single { box-shadow: 0 0 0 3px #facc15; }
+  .tag.single.p15 { box-shadow: 0 0 0 3px #facc15; }
+  .single-note { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .single-note .tag { padding: 2px 8px; }
+  .tag.legend { background: var(--chip); color: var(--text); }
   .tag.plain { background: var(--chip); color: var(--text); font-weight: 500; }
   /* 신문별 색: 진한 바탕 + 흰 글씨 (밖에서도 잘 보이게) */
   .tag[class*=" p"] { color: #fff; }
@@ -490,8 +496,12 @@
     for (const c of name) h = (h * 31 + c.codePointAt(0)) >>> 0;
     return 'p' + (h % PALETTE_SIZE);
   }
-  const paperTag = (name, count) =>
-    `<span class="tag ${paperColor(name)}">${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
+  // 그날 전체에서 1부뿐인 신문 (render 때마다 다시 계산) → ★ 표시
+  let singlePapers = new Set();
+  const paperTag = (name, count) => {
+    const single = singlePapers.has(name);
+    return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
+  };
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   const KEY_DATA = 'paperDelivery.data.v1';
   const KEY_PROG = 'paperDelivery.progress.v1';
@@ -675,8 +685,10 @@
     renderDays();
     renderProgress();
     const active = activeOn(data.households, selDay);
+    singlePapers = new Set(countPapers(active, selDay).filter(([, c]) => c === 1).map(([n]) => n));
     let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
-      <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div></div>
+      <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div>
+        ${singlePapers.size ? `<p class="hint single-note"><span class="tag single legend">★</span> 오늘 딱 1부뿐인 신문 (${singlePapers.size}종) — 빠뜨리지 않게 따로 챙기세요</p>` : ''}</div>
       <div class="toolbar" style="margin-top:14px">
         <label class="switch"><input type="checkbox" id="showOff" ${ui.showOff ? 'checked' : ''}> 배달 없는 곳도 보기</label>
         <span class="grow"></span>
