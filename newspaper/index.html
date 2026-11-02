@@ -503,6 +503,7 @@
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
+  const PAPER_FIRST = ['조선', '중앙', '동아']; // 합계에서 항상 앞에 보여줄 신문
   const KEY_DATA = 'paperDelivery.data.v1';
   const KEY_PROG = 'paperDelivery.progress.v1';
   const KEY_UI = 'paperDelivery.ui.v1';
@@ -589,7 +590,10 @@
   function countPapers(list, wd) {
     const map = new Map();
     for (const h of list) for (const n of papersOn(h, wd)) map.set(n, (map.get(n) || 0) + 1);
-    return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
+    // 조선·중앙·동아를 항상 맨 앞에, 나머지는 많은 순 → 가나다순
+    const rank = n => { const i = PAPER_FIRST.indexOf(n); return i < 0 ? PAPER_FIRST.length : i; };
+    return [...map.entries()].sort((a, b) =>
+      rank(a[0]) - rank(b[0]) || b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
   }
   function totalsHtml(list, wd) {
     const entries = countPapers(list, wd);
