@@ -502,6 +502,8 @@
     const single = singlePapers.has(name);
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
+  // 웹을 고칠 때마다 올리는 버전 (휴대폰이 예전 화면을 기억하면 자동으로 새로고침)
+  const APP_VERSION = '2026.11.03-1';
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   const PAPER_FIRST = ['조선', '중앙', '동아']; // 합계에서 항상 앞에 보여줄 신문
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -877,7 +879,7 @@
         <button class="btn" id="mSeed">↺ 기본 명단으로 되돌리기</button>
         <button class="btn danger" id="mWipe">🗑 모든 데이터 삭제</button>
       </div>
-      <p class="hint">등록된 집: ${data.households.length}곳 · 데이터는 이 기기 브라우저에만 저장돼요. 가끔 백업 파일을 저장해 두세요.</p>
+      <p class="hint">버전 ${APP_VERSION} · 등록된 집: ${data.households.length}곳 · 데이터는 이 기기 브라우저에만 저장돼요. 가끔 백업 파일을 저장해 두세요.</p>
       <div class="modal-actions"><span class="grow"></span><button class="btn" id="mClose">닫기</button></div>
       <input type="file" id="mFile" accept="application/json,.json" hidden>`);
     $('#mClose').addEventListener('click', closeModal);
@@ -1049,6 +1051,18 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
   render();
+
+  // 새 버전 확인: 서버의 최신 파일을 캐시 없이 받아서 버전이 다르면 새로고침
+  async function checkUpdate() {
+    if (location.protocol === 'file:') return;
+    try {
+      const res = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+      const m = (await res.text()).match(/const APP_VERSION = '([^']+)'/);
+      if (m && m[1] !== APP_VERSION) location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]));
+    } catch { /* 오프라인이면 그냥 지금 화면 사용 */ }
+  }
+  checkUpdate();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 })();
 </script>
 </body>
