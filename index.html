@@ -589,7 +589,7 @@
   function sortUnits(list) {
     return list.slice().sort((a, b) => {
       const pa = parseUnit(a.unit), pb = parseUnit(b.unit);
-      const f = pb.floor - pa.floor; // 높은 층이 위로
+      const f = pa.floor - pb.floor; // 낮은 층이 위로
       return f || pa.line - pb.line;
     });
   }
@@ -651,7 +651,7 @@
     </div>`;
   }
 
-  // 입구 카드: 맨 위에 챙길 신문 합계, 그 아래 호수 (높은 층부터)
+  // 입구 카드: 맨 위에 챙길 신문 합계, 그 아래 호수 (낮은 층부터)
   function stopHtml(s, idx, num) {
     const e = entrancesOf(s.b)[s.no - 1];
     const inE = householdsIn(s.b, s.no);
