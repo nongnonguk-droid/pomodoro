@@ -85,6 +85,9 @@
 
   .section-title { font-size: 14px; color: var(--muted); margin: 18px 2px 8px; font-weight: 600; }
   .section-title:first-child { margin-top: 2px; }
+  .total-title { display: flex; align-items: baseline; justify-content: space-between; }
+  .total-count { color: var(--text); font-size: 15px; font-weight: 600; }
+  .total-count b { font-size: 20px; color: var(--primary); }
 
   .card {
     background: var(--card); border: 1px solid var(--line);
@@ -503,7 +506,7 @@
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
   // 웹을 고칠 때마다 올리는 버전 (휴대폰이 예전 화면을 기억하면 자동으로 새로고침)
-  const APP_VERSION = '2026.11.03-2';
+  const APP_VERSION = '2026.11.03-3';
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   const PAPER_FIRST = ['조선', '중앙', '동아']; // 합계에서 항상 앞에 보여줄 신문
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -692,7 +695,9 @@
     renderProgress();
     const active = activeOn(data.households, selDay);
     singlePapers = new Set(countPapers(active, selDay).filter(([, c]) => c === 1).map(([n]) => n));
-    let html = `<div class="section-title">${DAY_NAMES[selDay]}요일 전체 신문</div>
+    const totalCopies = countPapers(active, selDay).reduce((sum, [, c]) => sum + c, 0);
+    let html = `<div class="section-title total-title">${DAY_NAMES[selDay]}요일 전체 신문
+        ${totalCopies ? `<span class="total-count">총 <b>${totalCopies}</b>부 · ${active.length}집</span>` : ''}</div>
       <div class="card"><div class="totals">${totalsHtml(active, selDay)}</div>
         ${singlePapers.size ? `<p class="hint single-note"><span class="tag single legend">★</span> 오늘 딱 1부뿐인 신문 (${singlePapers.size}종) — 빠뜨리지 않게 따로 챙기세요</p>` : ''}</div>
       <div class="toolbar" style="margin-top:14px">
