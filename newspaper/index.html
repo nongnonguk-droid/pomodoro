@@ -119,10 +119,10 @@
   .p6 { background: #a16207; }   /* 머니 - 황토 */
   .p7 { background: #dc2626; }   /* 소중 - 빨강 */
   .p8 { background: #475569; }   /* 데일리 - 회색 */
-  .p9 { background: #65a30d; }   /* 어동 - 연두 */
+  .p9 { background: #65a30d; }   /* 어린 동 - 연두 */
   .p10 { background: #4338ca; }  /* 서경 - 남색 */
   .p11 { background: #9f1239; }  /* 한자 - 자주 */
-  .p12 { background: #0284c7; }  /* 어조 - 하늘 */
+  .p12 { background: #0284c7; }  /* 어린 조 - 하늘 */
   .p13 { background: #a21caf; }  /* 한겨레 - 자홍 */
   .p14 { background: #78350f; }  /* 이코노미·경향·세계 - 갈색 */
   .p15 { background: #111827; }  /* 영자·서울·국민·한국 - 검정 */
@@ -297,7 +297,7 @@
   // 신문별 색 (색 번호는 아래 CSS의 .p0 ~ .p15). 목록에 없는 신문은 이름으로 자동 배정
   const PAPER_COLORS = {
     '조선': 0, '중앙': 1, '동아': 2, '매경': 3, '한경': 4, '파이': 5, '머니': 6, '소중': 7,
-    '데일리': 8, '어동': 9, '서경': 10, '한자': 11, '어조': 12, '한겨레': 13,
+    '데일리': 8, '어린 동': 9, '서경': 10, '한자': 11, '어린 조': 12, '한겨레': 13,
     '이코노미': 14, '경향': 14, '세계': 14, '영자': 15, '서울': 15, '국민': 15, '한국': 15,
   };
   const PALETTE_SIZE = 16;
@@ -307,7 +307,10 @@
   const defaultDays = name => (PAPER_DAYS_DEFAULT[name] || WEEK).slice();
 
   // 기본 명단: "동-호수 신문 신문 ... | 메모" (메모에 '휴독'이 있으면 휴독 처리)
-  const SEED_VERSION = 2;
+  const SEED_VERSION = 3;
+  // 신문 이름 바꾸기 (명단의 짧은 이름 → 화면에 보일 이름)
+  const PAPER_RENAME = { '어조': '어린 조', '어동': '어린 동' };
+  const renamePaper = n => PAPER_RENAME[n] || n;
   const SEED_TEXT = `401-1302 중앙 머니 소중
 401-1702 조선 어조
 401-2401 중앙 머니 소중
@@ -488,7 +491,7 @@
       const [building, unit] = bu.split('-');
       return {
         id: 'seed' + i, building, unit,
-        papers: names.map(name => ({ name, days: defaultDays(name) })),
+        papers: names.map(renamePaper).map(name => ({ name, days: defaultDays(name) })),
         memo, paused: memo.includes('휴독'),
       };
     });
@@ -506,7 +509,7 @@
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
   // 웹을 고칠 때마다 올리는 버전 (휴대폰이 예전 화면을 기억하면 자동으로 새로고침)
-  const APP_VERSION = '2026.11.03-3';
+  const APP_VERSION = '2026.11.03-4';
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   const PAPER_FIRST = ['조선', '중앙', '동아']; // 합계에서 항상 앞에 보여줄 신문
   const KEY_DATA = 'paperDelivery.data.v1';
@@ -530,10 +533,13 @@
     // 처음 열면 기본 명단으로 시작
     data = { households: seedHouseholds(), seedVersion: SEED_VERSION };
     try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
-  } else if ((data.seedVersion || 0) < 2) {
-    // v2: 이코노미는 화요일만
-    data.households.forEach(h => h.papers.forEach(p => { if (p.name === '이코노미') p.days = [2]; }));
-    data.seedVersion = 2;
+  } else if ((data.seedVersion || 0) < SEED_VERSION) {
+    const v = data.seedVersion || 0;
+    data.households.forEach(h => h.papers.forEach(p => {
+      if (v < 2 && p.name === '이코노미') p.days = [2];   // v2: 이코노미는 화요일만
+      if (v < 3) p.name = renamePaper(p.name);            // v3: 어조→어린 조, 어동→어린 동
+    }));
+    data.seedVersion = SEED_VERSION;
     try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
   }
   let progress = store.get(KEY_PROG, {});          // { 'YYYY-MM-DD': { householdId: true } }
