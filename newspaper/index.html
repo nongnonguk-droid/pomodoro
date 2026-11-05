@@ -307,7 +307,7 @@
   const defaultDays = name => (PAPER_DAYS_DEFAULT[name] || WEEK).slice();
 
   // 기본 명단: "동-호수 신문 신문 ... | 메모" (메모에 '휴독'이 있으면 휴독 처리)
-  const SEED_VERSION = 3;
+  const SEED_VERSION = 4;
   // 신문 이름 바꾸기 (명단의 짧은 이름 → 화면에 보일 이름)
   const PAPER_RENAME = { '어조': '어린 조', '어동': '어린 동' };
   const renamePaper = n => PAPER_RENAME[n] || n;
@@ -427,7 +427,6 @@
 410-103 중앙
 410-203 중앙 머니
 410-403 조선
-410-804 조선
 410-903 중앙 머니 | 휴독중
 410-1103 조선
 410-1203 동아 경향
@@ -510,7 +509,7 @@
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
   // 웹을 고칠 때마다 올리는 버전 (휴대폰이 예전 화면을 기억하면 자동으로 새로고침)
-  const APP_VERSION = '2026.11.03-5';
+  const APP_VERSION = '2026.11.05-1';
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   // 항상 이 순서로 앞에 보여줄 신문 (전체·입구별 합계, 호수 목록 모두)
   const PAPER_FIRST = ['조선', '중앙', '동아', '매경', '한경', '머니', '데일리'];
@@ -538,6 +537,8 @@
     try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
   } else if ((data.seedVersion || 0) < SEED_VERSION) {
     const v = data.seedVersion || 0;
+    // v4: 410동 804호 구독 중지
+    if (v < 4) data.households = data.households.filter(h => !(h.building === '410' && h.unit === '804'));
     data.households.forEach(h => h.papers.forEach(p => {
       if (v < 2 && p.name === '이코노미') p.days = [2];   // v2: 이코노미는 화요일만
       if (v < 3) p.name = renamePaper(p.name);            // v3: 어조→어린 조, 어동→어린 동
