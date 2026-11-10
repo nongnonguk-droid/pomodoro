@@ -313,7 +313,7 @@
     (PAPER_DAYS_DEFAULT[name] || (SAT_PAPERS.includes(name) ? WEEK : WEEKDAYS)).slice();
 
   // 기본 명단: "동-호수 신문 신문 ... | 메모" (메모에 '휴독'이 있으면 휴독 처리)
-  const SEED_VERSION = 6;
+  const SEED_VERSION = 7;
   // 신문 이름 바꾸기 (명단의 짧은 이름 → 화면에 보일 이름)
   const PAPER_RENAME = { '어조': '어린 조', '어동': '어린 동' };
   const renamePaper = n => PAPER_RENAME[n] || n;
@@ -515,7 +515,7 @@
     return `<span class="tag ${paperColor(name)} ${single ? 'single' : ''}">${single ? '★ ' : ''}${esc(name)}${count != null ? ` <em>${count}</em>` : ''}</span>`;
   };
   // 웹을 고칠 때마다 올리는 버전 (휴대폰이 예전 화면을 기억하면 자동으로 새로고침)
-  const APP_VERSION = '2026.11.08-1';
+  const APP_VERSION = '2026.11.10-1';
   const DEFAULT_PAPERS = Object.keys(PAPER_COLORS);
   // 항상 이 순서로 앞에 보여줄 신문 (전체·입구별 합계, 호수 목록 모두)
   const PAPER_FIRST = ['조선', '중앙', '동아', '매경', '한경', '머니', '데일리'];
@@ -553,6 +553,13 @@
       // v6: 한경도 토요일 배달
       if (v < 6 && p.name === '한경' && !p.days.includes(6)) p.days = DAY_ORDER.filter(d => d === 6 || p.days.includes(d));
     }));
+    // v7: 411동 501호 한경 (없으면 추가, 있는데 한경이 없으면 한경 추가)
+    if (v < 7) {
+      const h = data.households.find(x => x.building === '411' && x.unit === '501');
+      if (!h) data.households.push({ id: 'v7-411-501', building: '411', unit: '501', papers: [{ name: '한경', days: defaultDays('한경') }], memo: '' });
+      else if (!h.papers.some(p => p.name === '한경')) h.papers.push({ name: '한경', days: defaultDays('한경') });
+      if (h && h.paused) h.paused = false;
+    }
     data.seedVersion = SEED_VERSION;
     try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch {}
   }
